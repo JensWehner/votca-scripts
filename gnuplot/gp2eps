@@ -1,0 +1,510 @@
+#! /usr/bin/perl -w
+#
+# C. Junghans
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+#
+# This is a clone for epslatex term and standalone input tex files of
+# fixpslatex.pl by Sandro Wenzel, Thomas Vogel (November 2003)
+# wenzel@itp.uni-leipzig.de or vogel@itp.uni-leipzig.de
+#
+#
+#version 1.1f - removes trash tex files etc.
+#version 1.2  - latex is now halt-on-errors
+#version 1.3  - fixes problem with .tex file as input and some nicer perl
+#version 1.4 - fixes problem with the pattern for size2 and add --debug option
+#version 1.5 - fixes small problems with set out and set term
+#version 1.5.1 - added -gv option
+#version 1.6   added short better short opts
+#version 1.7   added --gnuplot and --gversion
+#version 1.7.1 added --watch to gv
+#version 1.7.2 removed base name
+#version 1.7.3 add --keep
+#version 1.7.4 added tex package color (gnuplot < 4.2)
+#version 1.7.5,  25.04.08 -- better version system
+#version 1.7.6,  02.06.08 -- bug in --keep
+#version 1.7.7,  06.06.08 -- added space in pattern for numbers
+#version 1.7.8,  08.07.08 -- fixes a bug when calling itself and comment lines in gp file
+#version 1.7.9,  13.10.08 -- added GPL header
+#version 1.7.10, 01.06.09 -- improved docu
+#version 1.7.11, 08.06.09 -- use bbox_add.pl from cwd, if it exists
+#version 1.7.12, 30.06.09 -- added --gnuplot to oldcommandline 
+#version 1.7.13, 18.07.09 -- fixed some typos in --help 
+#version 1.7.14, 16.11.09 -- filecheck before scale calc, better when no arg given 
+#version 1.8.0,  20.05.10 -- added --deps
+#version 1.8.1,  01.06.10 -- added --bbox_add
+#version 1.8.2,  03.07.10 -- fixed a bug in --deps
+use strict;
+
+$_=$0;
+s#^.*/##;
+my $progname=$_;
+my $usage="Usage: $progname [OPTIONS] FILE\nHelp with --help\nFILE have to be a .gp or .tex file";
+
+#Defaults
+my $quiet=undef;
+my $outname=undef;
+my $sc=0.5;
+my $fs=0.8;
+my $rs=0.8;
+my $ps=10;
+my $gpown=10;
+my $nobbfix=undef;
+my $debug=undef;
+my $gnuplot="gnuplot";
+my $bbox_add="bbox_add.pl";
+
+my $oldcommandline='';
+my $bbrescale=undef;
+my $gv=undef;
+my $showdeps=undef;
+
+while ((defined ($ARGV[0])) and ($ARGV[0] =~ /^\-/))
+{
+        if (($ARGV[0] !~ /^--/) and (length($ARGV[0])>2)){
+           $_=shift(@ARGV);
+           if ( $_ =~ /^-[foprs]/ ) {
+              unshift(@ARGV,substr($_,0,2),substr($_,2));
+           }
+           else{
+              unshift(@ARGV,substr($_,0,2),"-".substr($_,2));
+           }
+        }
+	if (($ARGV[0] eq "-h") or ($ARGV[0] eq "--help"))
+	{
+		print <<END;
+$usage
+Make a eps file out of a tex or gnuplot (.gp) file
+-v, --version         Prints version
+    --gversion        Show gnuplot version (may use --gnuplot before)
+-h, --help            Show this help message
+-q, --quiet           Do not show messages
+                      except errors
+-s, --scale X.X       scale of the image to text
+		      (should be the same as using in main tex file
+                      \\includegraphics[width=X.X\\textwidth]{YYY.eps}, when s=X.X )
+                      0.5=halfsides 1.0=normal
+                      default: $sc
+-f, --fontscale X.X   scale for the fonts (to pointsize)
+                      1.0=normal 0.8=footnote
+                      default: $fs
+-p, --pointsize X.X   pointsize of the fonts
+                      default: $ps
+-r, --ratioscale X.X  change the ratio between size of labels
+                      (\\gplabel) and numbers (\\gpnumber)
+                      default: $rs
+-o FILE               give the output filename, else it is
+                      grep from the gp-file or tex-file that is used
+--gpown  X.X          give size of additional label '\\gpown'
+                      default: $gpown
+--gv                  start gv at the end
+--nobbfix             will not fix bounding box to a tight box
+--bbrescale           used for correct fontsize after bounding box fix
+                      do NOT use this yourself
+--deps                show makefile deps the eps file (implies --quiet)
+--gnuplot NAME        change the gnuplot command
+                      Default: "$gnuplot"
+--bbox_add NAME       change the bbox_add command
+                      Default: "$bbox_add"
+--debug               keep .tex file for debugging (implies --nobbfix)
+--keep                keep .tex file for debugging 
+
+Axis numbers are always scaled with 0.8 (change with -r option). Additional stuff to scale
+like the graph numbers can be marked with \\gpnumber.  Stuff to scale like labels can be
+marked with \\gplabel. Stuff to scale somehow else can be marked with \\gpown (use --gpown).
+
+Send comments and bugs to: junghans\@mpip-mainz.mpg.de
+END
+		exit;
+	}
+	elsif ($ARGV[0] eq "-o")
+	{
+		shift(@ARGV);
+		$outname=shift(@ARGV);
+		$oldcommandline.=" -o $outname";
+	}
+	elsif (($ARGV[0] eq "-v") or ($ARGV[0] eq "--version"))
+	{
+		my $version=`perl -ne 'print "\$1\n" if /^#(version .*?) --/' $0 | perl -ne 'print if eof'`;
+		chomp($version);
+		print "$progname, $version  by C. Junghans\n";
+		exit;
+	}
+	elsif ($ARGV[0] eq "--hg")
+	{
+		my $message=`perl -ne 'print "\$1\n" if /^#version .*? -- (.*)\$/' $0 | perl -ne 'print if eof'`;
+		chomp($message);
+		print "$progname: $message\n";
+		exit;
+	}
+	elsif (($ARGV[0] eq "-q") or ($ARGV[0] eq "--quiet"))
+	{
+		$quiet='yes';
+		shift(@ARGV);
+		$oldcommandline.=" -q";
+	}
+	elsif (($ARGV[0] eq "-s") or ($ARGV[0] eq "--scale"))
+	{
+		shift(@ARGV);
+		$sc=shift(@ARGV);
+	}
+	elsif (($ARGV[0] eq "-f") or ($ARGV[0] eq "--fontscale"))
+	{
+		shift(@ARGV);
+		$fs=shift(@ARGV);
+		$oldcommandline.=" -f $fs";
+	}
+	elsif (($ARGV[0] eq "-p") or ($ARGV[0] eq "--pointsize"))
+	{
+		shift(@ARGV);
+		$ps=shift(@ARGV);
+		$oldcommandline.=" -p $ps";
+	}
+	elsif (($ARGV[0] eq "-r") or ($ARGV[0] eq "--ratioscale"))
+	{
+		shift(@ARGV);
+		$rs=shift(@ARGV);
+		$oldcommandline.=" -r $rs";
+	}
+	elsif ($ARGV[0] eq "--gv")
+	{
+		shift(@ARGV);
+		$gv="yes";
+		#$oldcommandline.=" -gv";
+	}
+	elsif ($ARGV[0] eq "--gpown")
+	{
+		shift(@ARGV);
+		$gpown=shift(@ARGV);
+		$oldcommandline.=" --gpown $gpown";
+	}
+	elsif ($ARGV[0] eq "--nobbfix")
+	{
+		shift(@ARGV);
+		$nobbfix='yes';
+	}
+	elsif ($ARGV[0] eq "--bbrescale")
+	{
+		shift(@ARGV);
+		$bbrescale='yes';
+	}
+	elsif ($ARGV[0] eq "--deps")
+	{
+		shift(@ARGV);
+		$showdeps='yes';
+		$quiet="yes";
+	}
+	elsif ($ARGV[0] eq "--gnuplot")
+	{
+		shift(@ARGV);
+		$gnuplot=shift(@ARGV);
+		$oldcommandline.=" --gnuplot $gnuplot";
+	}
+	elsif ($ARGV[0] eq "--bbox_add")
+	{
+		shift(@ARGV);
+		$bbox_add=shift(@ARGV);
+		$oldcommandline.=" --bbox_add $bbox_add";
+	}
+	elsif ($ARGV[0] eq "--gversion")
+	{
+		system("echo show version | $gnuplot");
+		exit;
+	}
+	elsif ($ARGV[0] eq "--debug")
+	{
+		shift(@ARGV);
+		$debug='yes';
+		$nobbfix='yes';
+	}
+	elsif ($ARGV[0] eq "--keep")
+	{
+		shift(@ARGV);
+		$debug='yes';
+		$oldcommandline.=" --keep";
+	}
+	else
+	{
+		print "Unknow option '".$ARGV[0]."' ignored !\n";
+		shift(@ARGV);
+	}
+}
+
+#Print usage
+die "$usage\nno file given\n" unless $#ARGV > -1;
+die "$usage\nfile not exist or is not readable\n" unless (-r $ARGV[0]);
+
+print "Using scale=$sc fontscale=$fs pointsize=$ps and gpown=$gpown\n" unless $quiet;
+print "Using gnuplot: $gnuplot\n" unless $quiet;
+my $size=$ps/$sc*$fs;
+my $sizestart='{\fontsize{'.$size.'}{'.$size.'}\selectfont';
+print "$sizestart\n" if $debug;
+my $size2=$ps/$sc*$fs*$rs;
+my $size2start='{\fontsize{'.$size2.'}{'.$size2.'}\selectfont';
+print "$size2start\n" if $debug;
+my $size3=$gpown/$sc;
+my $size3start='{\fontsize{'.$size3.'}{'.$size3.'}\selectfont';
+print "$size3start\n" if $debug;
+
+my $texname=undef;
+my $gpname=undef;
+print "Using file: '$ARGV[0]'\n" unless $quiet;
+if ( $ARGV[0] =~ /^(.*)\.tex/ )
+{
+	$texname=$1;
+	$outname=$texname."_tex" unless $outname;
+}
+elsif ( $ARGV[0] =~ /^(.*)\.gp/ )
+{
+	$gpname=$1;
+	$outname=$gpname unless $outname;
+}
+else
+{
+	die "Error: File does not end with '.gp' or '.tex'\n";
+}
+
+#show deps for makefiles
+if ($showdeps)
+{
+	my $deps="$outname.eps:";
+	open(FILE,$ARGV[0]) or die "Error at opening gp file '$ARGV[0]'\n";
+	while (<FILE>)
+	{
+	  	#in gp file
+	  	if ($gpname)
+		{
+	  		#concat line ending with \
+			while ((/(.*)\\$/) and defined(my $line=<FILE>))
+			{
+				$_=$1.$line;
+	  		}
+			#ignore comment lines
+  			next if /^#/;
+			#line starting with plot, splot, replot
+  			if (/^\s*(re|s)?plot/)
+			{
+			  	#save old line, we cannot be sure there is not includegraphics in plot command
+    				my $line=$_;
+				#plot [xx:xx] or , can stand before filename in "" or ''
+				#and inline command "<xxx " should be ignored
+    				while (s/(?:s?plot(?:\s*\[.*\])?|,)\s*(['"])([^<].*?)(\1)//)
+				{
+					$deps.=" $2";
+    				}
+				$_=$line;
+  			}
+		}
+		#tex file
+		else
+		{
+  			next if /^%/;
+		}
+		if (/includegraphics(?:\[.*?\])?\{(.*?)\}/) {
+			$deps.=" $1";
+		}
+	}
+	print "$deps\n" unless $deps eq "$outname.eps:";
+	exit;
+}
+
+#if only gp file is given -> build tex file from gnuplot
+if ($gpname)
+{
+	print "gp-file name : '".$gpname."'\n" unless $quiet;
+	open(FILE,$ARGV[0]) or die "Error at opening gp file '$ARGV[0]'\n";
+	my $term=undef;
+	while (<FILE>)
+	{
+		next if /^#/;
+		if (/set (out |ou |output)/)
+		{
+			if ($_ =~ / ["'](.+?)\.(eps|tex)["']/)
+			{
+				$texname=$1;
+				print "Found eps name '".$1.".eps\n";
+			}
+			else
+			{
+				die "file given in 'set output' does not end with .eps or .tex\n";
+			}
+		}
+		if (/set (t |term |terminal)/)
+		{
+			if ($_ =~ /epslatex/)
+			{
+				$term="epslatex";
+				print "Found term epslatex\n" unless $quiet;
+			}
+			else
+			{
+				die "'set term' is not 'epslatex'\n";
+			}
+		}
+	}
+	close(FILE);
+	die "'set output' not found \n" unless $texname;
+	die "'set term' not found \n" unless $term;
+	die "Error: Output file in gp-file has the same name as output itself:$gpname.(eps|tex)\n" if $texname eq $gpname;
+	die "Error at runing gnuplot\n" if system ("$gnuplot ".$ARGV[0]);
+}
+print "tex-file name : '$texname.tex'\n" unless $quiet;
+die "Error: name of tex-file is the same as output name\n" if $texname eq $outname;
+print "output name : '$outname.eps'\n" unless $quiet;
+
+
+open (NEWTEXFILE,"> ".$outname.".tex")
+	or die "Error at opening new tex file\n";
+open(OLDTEXFILE,$texname.".tex")
+	or die "Error at opening old tex file\n";
+print NEWTEXFILE '\documentclass{report}'."\n";
+print NEWTEXFILE '\usepackage{graphicx}'."\n";
+print NEWTEXFILE '\usepackage{color}'."\n";
+print NEWTEXFILE '\usepackage{amsmath}'."\n";
+print NEWTEXFILE '\usepackage{psfrag}'."\n";
+print NEWTEXFILE '\newcommand{\gplabel}{}'."\n";
+print NEWTEXFILE '\newcommand{\gpnumber}{}'."\n";
+print NEWTEXFILE '\newcommand{\gpown}{}'."\n";
+print NEWTEXFILE '\begin{document}'."\n";
+print NEWTEXFILE '\pagestyle{empty}'."\n";
+
+my @sizelines;
+my @size2lines;
+my @size3lines;
+my $put=undef;
+while (<OLDTEXFILE>)
+{
+	# in the put block of the tex file
+	if ( $_ =~ /\\put/ )
+	{
+		$put='yes';
+		if ($_ =~/\\gplabel/)
+		{
+			push (@sizelines,$_);
+		}
+		elsif ($_ =~/\\gpnumber/)
+		{
+			push (@size2lines,$_);
+		}
+		elsif ($_ =~/\\gpown/)
+		{
+			push (@size3lines,$_);
+		}
+		elsif ( $_ =~ /\{\}\s*[\de+-.]*\s*\}\}%\n$/ )
+		{
+			push (@size2lines,$_);
+		}
+		else
+		{
+			push (@sizelines,$_);
+		}
+	}
+	else
+	{
+		if ($put)
+		{
+			if ($#sizelines>-1)
+			{
+				print NEWTEXFILE $sizestart,"\n";
+				while (my $i=pop(@sizelines))
+				{
+					print NEWTEXFILE $i;
+				}
+				print NEWTEXFILE "}\n";
+			}
+			if ($#size2lines>-1)
+			{
+				print NEWTEXFILE $size2start,"\n";
+				while (my $i=pop(@size2lines))
+				{
+					print NEWTEXFILE $i;
+				}
+				print NEWTEXFILE "}\n";
+			}
+			if ($#size3lines>-1)
+			{
+				print NEWTEXFILE $size3start,"\n";
+				while (my $i=pop(@size3lines))
+				{
+					print NEWTEXFILE $i;
+				}
+				print NEWTEXFILE "}\n";
+			}
+		}
+		$put=undef;
+		print NEWTEXFILE $_ unless $_ =~ /\\endinput/
+	}
+}
+print NEWTEXFILE '\end{document}'."\n";
+close(NEWTEXFILE);
+close(OLDTEXFILE);
+unlink($texname.".tex") if $gpname;
+
+die "Error at runing latex\n" if system("latex -halt-on-error ".$outname.".tex");
+unlink($outname.".tex") unless $debug;
+unlink($outname.".aux");
+unlink($outname.".log");
+
+die "Error at runing dvips\n" if system("dvips -E ".$outname.".dvi -o ".$outname.".eps");
+unlink($outname.".dvi");
+unlink($texname.".eps") if ($gpname and !$debug);
+
+unless ($nobbfix)
+{
+	$bbox_add="./$bbox_add" if ( -f "./$bbox_add" );
+	print "Using bbox_add: $bbox_add\n" unless $quiet;
+ 	die "Error at runing $bbox_add\n" if system("$bbox_add --keep $outname.eps");
+	#calculate fontsize in pic without white border, do this only one time :-)
+	unless ($bbrescale)
+	{
+		open(FILE,$outname.".eps.orig")
+			or die "can not open ".$outname.".eps.orig\n";
+		my $olddelta=undef;
+		while (<FILE>)
+		{
+			if ($_ =~ /%%BoundingBox:\s(\d+)\s(\d+)\s(\d+)\s(\d+)/)
+			{
+				$olddelta=$3-$1;
+				last;
+			}
+		}
+		close(FILE);
+		die "find no bounding box in ".$outname.".eps.orig\n" unless $olddelta;
+		
+		open(FILE,$outname.".eps")
+			or die "can not open ".$outname.".eps\n";
+		my $newdelta=undef;
+		while (<FILE>)
+		{
+			if ($_ =~ /%%BoundingBox:\s(\d+)\s(\d+)\s(\d+)\s(\d+)/)
+			{
+				$newdelta=$3-$1;
+				last;
+			}
+		}
+		close(FILE);
+		die "find no bounding box in ".$outname.".eps\n" unless $newdelta;
+		$sc=$sc*$olddelta/$newdelta;
+		die "Error at runing gp2eps\n" if system("$0 --bbrescale -s $sc $oldcommandline $ARGV[0]");
+	}
+	unlink($outname.".eps.orig");
+}
+
+if ($gv)
+{
+	die "Error at runing gv\n" if system("gv -watch $outname.eps &");
+}
+#fs md5sum 7426f2287bf9ef55256ca95fcbe15f38
