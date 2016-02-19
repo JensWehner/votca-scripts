@@ -9,6 +9,7 @@ import shutil
 import re
 import argparse 
 import lxml.etree as lxml
+import numpy.linalg. as lg
 
 
 class cd:
@@ -43,7 +44,7 @@ class molecule:
         self.pos=np.array([0,0,0])
         self.name=None
         self.atomlist=[]
-    
+        self.coG=None
     
     def readxyzfile(self,filename):
         noofatoms=None
@@ -60,18 +61,47 @@ class molecule:
                     name=entries[0]
                     pos=np.array([float(entries[0]),float(entries[1]),float(entries[2])])
                     self.atomlist.append(atom(name,pos))
+        self.coG()
         return
-+
+
     def __add__(self,other):
         for i in other.atomlist:
             self.atomlist.append(i)
+        self.coG()
 
+    def coG(self):
+        coG=np.array([0,0,0])
+        for i in self.atomlist:
+            coG+=i.pos
+        coG=coG/float(len(self.atomlist))
+        self.coG=coG
+        
+    
     def copy(self):
         return copy.deepcopy(self)
 
     def shift(self,shift):
+
         for i in self.atomlist:
             i.shift(shift)
+        self.coG()
+
+    def rotate(self,angle,axis,r=None):
+        norm=axis/lg.norm(axis)
+        crossproduktmatrix=np.array([[0,-norm[2],norm[1]],[norm[2],0,-norm[0]],[-norm[1],norm[0],0]])
+        R=np.cos(angle)*np.identity(3)+np.sin(angle)*crossproduktmatrix+(1-np.cos(angle))*np.outer(norm,norm)
+        if r==None:
+            save=self.coG
+            self.shift(-save)
+            for i in self.atomlist:
+                i.pos=np.dot(R,i.pos)    
+            self.shift(save)
+        else:
+            save=r-self.coG
+            self.shift(-save)
+            for i in self.atomlist:
+                i.pos=np.dot(R,i.pos) 
+            self.shift(np.dot(R,i.pos))    
             
     def writexyz(self,filename,header=False):
         with open(filename,"w") as f:

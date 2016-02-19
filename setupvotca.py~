@@ -163,7 +163,7 @@ class votcafolder(object):
             print "Creating mps.tab file for {}".format(self.name)
             sp.call("xtp_run -e {} -o OPTIONFILES/{}.xml -f {} -s 0 > stateserver.log".format(name,name,os.path.basename(self.sql)),shell=True,stderr=sp.STDOUT)
         name="iexcitoncl"
-        jobfile=os.path.join(self.path,"{}.jobs".format(name))
+        jobfile=os.path.join(self.path,"{}.jobs.iexcitoncl".format(name))
         mpsfile=os.path.join(self.path,"mps.tab".format(name))
         root=self.readoptionfile(name)
         for entry in root.iter(name):           
@@ -192,13 +192,31 @@ class votcafolder(object):
                 sp.check_output("xtp_run -e {} -o OPTIONFILES/{}.xml -f {} -t 4 > izindo.log".format(name,name,os.path.basename(self.sql)),shell=True)
 
     def egwbse(self):
+
+        if args.write:
             name="egwbse"
+            jobfile="egwbse.jobs"
             root=self.readoptionfile(name)
             for entry in root.iter(name):           
                 dftoptions=entry.find("package").text
+                shutil.copyfile(os.path.join(self.template,"OPTIONFILES/"+dftoptions),self.optfiles)
                 gwbseoptions=entry.find("gwbse").text
-                entry.find("job_file").text=jobfile
-            self.writeoptionfile(,name)
+                shutil.copyfile(os.path.join(self.template,"OPTIONFILES/"+gwbseoptions),self.optfiles)
+                entry.find("job_file").text=os.path.join(self.path,jobfile)
+                try:
+                    espoptions=entry.find("esp").text
+                    shutil.copyfile(os.path.join(self.template,"OPTIONFILES/"+espoptions),self.optfiles)
+            self.writeoptionfile(root,name)
+            with cd(self.path):
+                print "Running egwbse to write jobfile {} for {}".format(jobfile,self.name)
+                sp.check_output("xtp_parallel -e {} -o OPTIONFILES/{}.xml -f {} -j write -s 0 > egwbse.log".format(name,name,os.path.basename(self.sql)),shell=True)
+
+        if args.read:
+            name="egwbse"
+            jobfile="egwbse.jobs"
+            with cd(self.path):
+                print "Running egwbse to read jobfile {} for {}".format(jobfile,self.name)
+                sp.check_output("xtp_parallel -e {} -o OPTIONFILES/{}.xml -f {} -j write -s 0 > egwbse.log".format(name,name,os.path.basename(self.sql)),shell=True)
             
 
     def ewald(self):
