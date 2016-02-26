@@ -21,7 +21,7 @@ class MyParser(argparse.ArgumentParser):
 
 
 
-parser=MyParser(description="Environment to check coupling")
+parser=MyParser(description="Environment to check coupling constants")
 
 parser.add_argument("--template",type=str,required=True,help="Folder, from which to take optionfiles from and where the exciton tool had been executed for one molecule")
 parser.add_argument("--xyz",type=str,help="Name of the xyz file for the molecule")
