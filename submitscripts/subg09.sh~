@@ -1,0 +1,47 @@
+#!/bin/tcsh
+#
+#$ -pe PE_8 8   
+#$ -o out_angle
+#$ -e err_angle
+#$ -cwd
+#$ -j y
+#$ -m n  
+#$ -M jens.wehner@mpip-mainz.mpg.de
+#$ -N dcv5t|angle
+
+set workdir=`pwd`
+echo "Workdir is $workdir"
+
+source /sw/linux/intel/composerxe-2011.0.084/bin/compilervars.csh intel64
+source ~/g09_init
+
+# create local scratch
+if ( ! -d /usr/scratch/wehnerj ) then
+    mkdir /usr/scratch/wehnerj
+endif
+
+set jno=0
+while ( -d job_$jno ) 
+    set jno = `expr $jno + 1`
+end
+set jobdir="/usr/scratch/wehnerj/job_$jno"
+mkdir $jobdir
+rm -rf $jobdir/*
+mkdir $jobdir/temp
+
+echo "Jobdir is $jobdir"
+
+# copy stuff to local scratch
+rsync -ar $workdir/*_angle.* $jobdir --exclude "*.out" --exclude "*.chk" --exclude "*.log"
+
+cd $jobdir
+
+g09 opt_angle
+
+cd ..
+#sync back
+rsync -ar $jobdir/* $workdir --exclude "*.out" --exclude "temp"
+
+#clean
+rm -rf $jobdir
+

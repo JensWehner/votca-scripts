@@ -1,0 +1,42 @@
+#!/bin/tcsh
+#
+#$ -pe PE_16 16
+#$ -o out.log
+#$ -e err.log
+#$ -cwd
+#$ -j y
+#$ -m a
+#$ -M wehnerj@mpip-mainz.mpg.de
+#$ -N Q_EWDBGPOL
+
+
+source /etc/profile.d/modules.sh
+module load votca/icc
+
+source /data/isilon/wehnerj/votca_icc_cluster/bin/VOTCARC.sh
+
+
+# BASE DIRECTORY
+set basedir=`pwd`
+if ( ! -d /usr/scratch/wehnerj ) then
+    mkdir /usr/scratch/wehnerj
+endif
+
+# JOB DIRECTORY
+set jno=0
+while ( -d job_$jno )
+    set jno = `expr $jno + 1`
+end
+set jobdir="/usr/scratch/wehnerj/job_$jno"
+mkdir -p $jobdir
+rm -rf $jobdir/*
+rsync -ar $basedir/* $jobdir
+
+# EXECUTE HEAVY STUFF
+cd $jobdir
+ctp_run -e ewdbgpol -o options.xml -f state.sql -t 16 -s 0 >& ctp.log
+cd ..
+
+# SYNC BACK
+rsync -ar $jobdir/* $basedir
+rm -rf $jobdir

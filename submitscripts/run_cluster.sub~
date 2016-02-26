@@ -1,0 +1,58 @@
+#!/bin/bash
+#
+#$ -pe PE_B12 12
+#$ -l h=!thinc131*
+#$ -o cluster_run-$JOB_ID.out
+#$ -e sluster_run-$JOB_ID.err
+#$ -cwd
+#$ -j y
+#$ -m eab
+#$ -M wehnerj@mpip-mainz.mpg.de
+#$ -N egwbse
+
+workdir=`pwd`
+echo "Workdir is $workdir"
+
+
+source /etc/profile.d/modules.sh
+export MODULEPATH="/sw/linux/modules/modulefiles/"
+module use -a ~/privatemodules
+module load votca/icc
+
+
+
+
+# create local scratch
+if [ ! -d /usr/scratch/wehnerj ]; then
+    mkdir /usr/scratch/wehnerj
+fi
+
+#jno=0
+#while ( -d /usr/scratch/wehnerj/job_${jno} ) 
+#do
+#    jno = `expr $jno + 1`
+#done
+#jobdir="/usr/scratch/wehnerj/job_${jno}"
+
+#mkdir $jobdir
+#rm -rf $jobdir/*
+#mkdir $jobdir/temp
+
+#echo "Jobdir is $jobdir"
+
+# COPY FOLDER
+#rsync -ar $workdir/* $jobdir
+
+#cd $jobdir
+
+# EXECUTE HEAVY WORK
+
+ctp_parallel -e igwbse -o OPTIONFILES/igwbse.xml -f system.sql -t 3  
+#cd ..
+
+# SYNCHRONIZE BACK & CLEAN
+#rsync -ar $jobdir/* $workdir
+#rm -rf $jobdir
+
+
+
