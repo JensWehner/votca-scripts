@@ -10,7 +10,53 @@ import re
 import argparse 
 import lxml.etree as lxml
 import numpy.linalg. as lg
+import time
 
+
+class MyParser(argparse.ArgumentParser):
+    def error(self, message):
+        sys.stderr.write('error: %s\n' % message)
+        self.print_help()
+        sys.exit(2)
+
+
+
+parser=MyParser(description="Environment to check coupling")
+
+parser.add_argument("--template",type=str,required=True,help="Folder, from which to take optionfiles from and where the exciton tool had been executed for one molecule")
+parser.add_argument("--xyz",type=str,help="Name of the xyz file for the molecule")
+parser.add_argument("--mps",type=str,default="",help="Name of the mps file for the molecule")
+parser.add_argument("--option","-o",type=str,required=True,help="Optionfile")
+parser.add_argument("--setup", action='store_const', const=1, default=0,help="Setup folders")
+parser.add_argument("--classicalcoupling", action='store_const', const=1, default=0,help="Run classical coupling")
+parser.add_argument("--exciton", action='store_const', const=1, default=0,help="Run exciton calc")
+parser.add_argument("--excpl", action='store_const', const=1, default=0,help="Run exciton coupling")
+parser.add_argument("--qmcpl", action='store_const', const=1, default=0,help="Run e/h coupling")
+parser.add_argument("--clcpl", action='store_const', const=1, default=0,help="Run classical coupling")
+
+args=parser.parse_args()
+if args.mps=="":
+    args.mps=None
+
+def readoptionsfile(optionfile):
+    print "Reading options from {}".format(optionfile)
+    parser=lxml.XMLParser(remove_comments=True)
+    tree = lxml.parse(optionfile,parser)
+    root = tree.getroot()      
+    distances=[]
+    rotations=[]
+    for child in root:
+        if child.tag=="distances":
+            for distance in child:
+                temp=np.array((child.text).split(),dtype=float)
+                distances.append(temp)
+        if child.tag=="rotations":
+            for rotation in child:
+                temp=np.array((child.text).split(),dtype=float)
+                rotations.append(temp)
+    if len(rotations)==0:
+        rotations=[None]
+    return distances,rotations
 
 class cd:
     """Context manager for changing the current working directory"""
@@ -35,8 +81,18 @@ class atom:
         self.pos+=pos 
 
     def xyzline(self):
-        return "{}\t{}\t{}\t{}\n".format(self.type,self.pos[0],self.pos[1],self.pos[2])
+        return "{:<3s}\t{:+.5f}\t{:+.5f}\t{:+.5f}\n".format(self.type,self.pos[0],self.pos[1],self.pos[2])
 
+    def mpsentry(self):
+        self.detrank
+        entry="{:>3s} {:+.7f} {:+.7f} {:+.7f} Rank {:d}\n    {:+.7f}\n".format(self.type,self.pos[0],self.pos[1],self.pos[2],self.rank,self.q)
+        pline="     P {:+.7f} {:+.7f} {:+.7f} {:+.7f} {:+.7f} {:+.7f}\n".format(self.pol[0,0],self.pol[0,1],self.pol[0,2],self.pol[1,1],self.pol[1,2],self.pol[2,2])
+        if self.rank>0:
+            entry+="    {:+.7f} {:+.7f} {:+.7f}\n".format(self.d[0],self.d[1],self.d[2])
+        if self.rank>1:
+            entry+="    {:+.7f} {:+.7f} {:+.7f} {:+.7f} {:+.7f}\n".format(self.quad[0],self.quad[1],self.quad[2],self.quad[3],self.quad[4])
+        entry+=pline
+        return entry
     
 
 class molecule:
@@ -86,7 +142,39 @@ class molecule:
             i.shift(shift)
         self.coG()
 
-    def rotate(self,angle,axis,r=None):
+    def updateatom(self,atom):
+        for a in self.atomlist:
+            if np.isclose(a.pos,atom.pos) and a.type=atom.type:
+                a=atom
+                return
+        self.atomlist.append(atom)
+        return
+                
+
+    def calcQ(self):
+        q=0
+        for i in self.atomlist:
+            q+=i.q
+        return q
+
+    def calcgeomean(self):
+        mean=np.zeros(3)
+        for i in self.atomlist:
+            mean+=i.pos
+        mean=mean/float(len(self.atomlist))
+        return mean
+
+    def calcDmonopoles(self):
+        mean=self.calcgeomean()
+        d=np.zeros(3)
+        for i in self.atomlist:
+            d+=(i.pos-mean)*i.q
+        d=d/float(len(self.atomlist))
+        return d
+
+    def rotate(self,rotation,r=None):
+        axis=rotation[0:3]
+        angle=rotation[-1]
         norm=axis/lg.norm(axis)
         crossproduktmatrix=np.array([[0,-norm[2],norm[1]],[norm[2],0,-norm[0]],[-norm[1],norm[0],0]])
         R=np.cos(angle)*np.identity(3)+np.sin(angle)*crossproduktmatrix+(1-np.cos(angle))*np.outer(norm,norm)
@@ -110,14 +198,81 @@ class molecule:
                 f.write("{}\n".format(len(self.atomlist)))
             for atom in self.atomlist:
                 f.write(atom.xyzline())
+
+    def writemps(self,filename):
+        d=self.calcDmonopoles()
+        with open(filename,"w") as f:  
+            f.write("! Created by Python Script for Testing GWBSE\n")
+            f.write("! N={} Q[e]={:+1.7f} D[e*nm]={:+1.7e} {:+1.7e} {:+1.7e}\n".format(len(self.atomlist),self.calcQ(),d[0],d[1],d[2]))
+            f.write("Units angstrom\n")
+            for atom in self.atomlist:
+                f.write(atom.mpsentry())
+
+
+    def readmps(self,filename):
+        line1=False
+        line2=False
+        conversion=False
+        d=None
+        quad=None
+        q=None
+        r=None
+        element=None
+        with open(filename,"r") as f:
+    
+            for line in f.readlines():
+                a=line.split()
+                if "Units angstrom" in line:
+                    conversion=1
+                elif "Units bohr" in line:
+                    conversion=0.52917721092
+                elif "Rank" in line:
+                    #print line
+                    element=a[0]
+                    rank=int(a[5])
+                    if conversion!=False:
+                        r=conversion*np.array(a[1:4],dtype=float) 
+                    line1=True
+                elif len(a)==1 and line1:
+                    q=float(a[0])
+                    line2=True
+                elif len(a)==3 and line1 and line2:
+                    d=np.array(a[0:3],dtype=float) 
+                    line3=True
+                elif len(a)==5 and line1 and line2 and line3 and "P" not in line:
+                    quad=np.array(a[0:],dtype=float) 
+                    line3=True
+                elif "P" in line and line1 and line2:
+                    p=np.array(a[1:],dtype=float)
+                    #print p
+                    ptensor=np.array([[p[0],p[1],p[2]],[p[1],p[3],p[4]],[p[2],p[4],p[5]]])
+                    line1=False
+                    line2=False
+                    line3=False
+                    a=atom(element,r)
+                    if quad==None:
+                        quad=np.zeros(5)
+                    if d==None:
+                        d=np.zeros(3)
+                    a.setmultipoles(q,d,quad,ptensor)
+                    self.updateatom(a)
+        return
                     
 
 class job:
     
-    def __init__(self,name,template):
-        self.setname(name)
+    def __init__(self,name,template,shift=False,rotation=False):
+        self.name=str(name)
         self.options=None
+        temp=""
+        if shift!=False:
+            temp+="_s_{:1.2f}_{:1.2f}_{:1.2f}".format(shift[0],shift[1],shift[2])
+        if rotation!=False:
+            temp+="_r_{:1.1f}_{:1.1f}_{:1.1f}_{:1.2f}".format(rotation[0],rotation[1],rotation[2],rotation[3])
+        self.setname(self.name+temp)
         self.template=os.path.abspath(template)
+        self.shift=shift
+        self.rotation=rotation
 
     def setname(self,name):
         self.name=name
@@ -126,24 +281,30 @@ class job:
     def makefolder(self):
         os.mkdir(self.path)
 
-    def setup(self,xyzfile,shift):
-        self.setname(self.name+"_{:1.2f}_{:1.2f}_{:1.2f}".format(shift[0],shift[1],shift[2]))
+    def setup(self,xyzfile,mpsfile=None):     
         self.makefolder()
-        self.createmolecule(xyzfile)  
-        self.copyoptions()
+        self.createdimer(xyzfile,mpsfile=None)  
    
-    def createmolecule(self,xyzin,shift):
+    def createdimer(self,infile,mpsfile=None):
         mol=molecule()
         mol.readxyz(os.path.join(self.template,xyzin)
+        if mpsfile!=None:
+            mpsout="B.mps"
+            self.creatempsdimer(mpsin,mpsout)
         mol2=mol.copy()
-        mol2.shift(shift)
+        if self.shift!=None:
+            mol2.shift(self.shift)
+        if self.rotation!=None:
+            mol2.rotate(rotation)
         mol=mol+mol2
-        mol.writexyz(os.path.join(self.path,"system.xyz"))      
+        mol.writexyz(os.path.join(self.path,"system.xyz"),header=True)      
 
-
-    def copyoptions(self):
-        for option in ["coupling","excitoncoupling","exciton"]:
-            writeoptionfile(readoptionsfile(option))
+    def creatempsdimer(self,mpsin,mpsout):
+        mol=molecule()
+        mol.readmps(os.path.join(self.template,mpsin))
+        mol.shift(self.shift)
+        mol.rotate(self.rotation)
+        mol.writemps(os.path.join(self.path,mpsout)) 
 
     def readoptionfile(self,name,calcname=None):
         if calcname==None:
@@ -163,23 +324,72 @@ class job:
         with open(optionfile, 'w') as f:
             f.write(lxml.tostring(root, pretty_print=True))
 
+    def classicalcoupling(self):
+        name="excitoncoupling_classical"
+        calcname="excitoncoupling"
+        shutil.copyfile(os.path.join(self.template,args.mps),os.path.join(self.path,"molA.mps"))
+        self.writeoptionfile(self.readoptionfile(name,calcname=calcname),name)
+        with cd(self.path):
+            if args.run:
+                print "Running {} for {}".format(name,self.name)
+                sp.check_output("xtp_tools -e {0} -o {1}.xml > {1}.log".format(calcname,name),shell=True)
 
     def coupling(self):
         name="coupling"
-        writeoptionfile(readoptionsfile(name))
+        print "Setting up options for {} for {}".format(name,self.name)
+        shutil.copyfile(os.path.join(self.template,"system.log"),os.path.join(self.path,"molA.log"))
+        shutil.copyfile(os.path.join(self.template,"fort.7"),os.path.join(self.path,"molA.fort"))
+        
+        self.writeoptionfile(self.readoptionfile(name),name)
         with cd(self.path):
-            sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
+            sp.call("ln -s molA.log molB.log".format(self.template,self.path),shell=True)
+            sp.call("ln -s molA.fort molB.fort".format(self.template,self.path),shell=True)
+            sp.call("ln -s fort.7 system.fort".format(self.template,self.path),shell=True)
+            
+            if args.run:
+                print "Running {} for {}".format(name,self.name)
+                sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
 
     def exciton(self):
         name="exciton"
-        writeoptionfile(readoptionsfile(name))
-        with cd(self.path):
-            sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
+        print "Setting up options for {} for {}".format(name,self.name)
+        self.writeoptionfile(self.readoptionfile(name),name)
+        
+        shutil.copyfile(os.path.join(self.template,"mbgft.xml"),os.path.join(self.path,"mbgft.xml"))
+        shutil.copyfile(os.path.join(self.template,"gaussian_egwbse_molecule.xml"),os.path.join(self.path,"gaussian_egwbse_molecule.xml"))
+        if args.run:
+            with cd(self.path):
+                print "Running {} for {}".format(name,self.name)
+                sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
             
     def xcoupling(self):
         name="excitoncoupling"
-        writeoptionfile(readoptionsfile(name))
+        print "Setting up options for {} for {}".format(name,self.name)
+        self.writeoptionfile(self.readoptionfile(name),name)
+        shutil.copyfile(os.path.join(self.template,"bsecoupling.xml"),os.path.join(self.path,"bsecoupling.xml"))
+        shutil.copyfile(os.path.join(self.template,"system.orb"),os.path.join(self.path,"molA.orb"))
         with cd(self.path):
-            sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
+            sp.call("ln -s molA.orb molB.orb".format(self.template,self.path),shell=True)
+            if args.run:
+                print "Running {} for {}".format(name,self.name)
+                sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
 
+template=args.template
+distances,rotations=readoptionsfile(args.option)
+for i,distance in enumerate(reversed(distances)):
+    for j,rotation in enumerate(rotations):
+        print "{} Distance {} of {}\t Rotation {} of {}".format(time.strftime("%H:%M:%S",gmtime()),i+1,len(distances),j+1,len(rotations))
+        jobs=job("job",template,shift=distance,rotation=rotation)
+        if args.setup:
+            jobs.setup(args.xyz,args.mps)
+        if args.clcpl:
+            jobs.classicalcoupling()
+        if args.exciton:
+            jobs.exciton()
+        if args.excpl:
+            jobs.xcoupling()
+        if args.qmcpl:
+            jobs.coupling()
+
+ 
 
