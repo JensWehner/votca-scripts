@@ -206,6 +206,8 @@ class votcafolder(object):
                 try:
                     espoptions=entry.find("esp").text
                     shutil.copyfile(os.path.join(self.template,"OPTIONFILES/"+espoptions),self.optfiles)
+                except:
+                    print "Running without espfits"
             self.writeoptionfile(root,name)
             with cd(self.path):
                 print "Running egwbse to write jobfile {} for {}".format(jobfile,self.name)

@@ -1,4 +1,4 @@
-#!/bin/python
+#!/usr/bin/python
 import numpy as np
 import sys
 import copy
@@ -9,7 +9,7 @@ import shutil
 import re
 import argparse 
 import lxml.etree as lxml
-import numpy.linalg. as lg
+import numpy.linalg as lg
 import time
 
 
@@ -48,14 +48,15 @@ def readoptionsfile(optionfile):
     for child in root:
         if child.tag=="distances":
             for distance in child:
-                temp=np.array((child.text).split(),dtype=float)
+                temp=np.array((distance.text).split(),dtype=float)
                 distances.append(temp)
         if child.tag=="rotations":
             for rotation in child:
-                temp=np.array((child.text).split(),dtype=float)
+                temp=np.array((rotation.text).split(),dtype=float)
                 rotations.append(temp)
     if len(rotations)==0:
         rotations=[None]
+    #print distances,rotations
     return distances,rotations
 
 class cd:
@@ -73,15 +74,39 @@ class cd:
 
 class atom:
 
-    def __init__(self,pos,name):
-        self.type=type
+    def __init__(self,name,pos):
+        self.type=name
         self.pos=pos    
-        
-    def shift(self,pos):
-        self.pos+=pos 
+        self.rank=0
+        self.q=0
+        self.d=np.zeros(3)
+        self.quad=np.zeros(5)
+        self.pol=np.zeros([3,3])
+
+    def setmultipoles(self,q,d,quad,pol):
+        self.q=q        
+        self.d=d
+       
+        self.quad=quad
+        self.detrank()
+        self.pol=pol
+
+    def detrank(self):
+        rank=0
+        if any(self.d!=0):
+            rank=1
+        if any(self.quad!=0):
+            rank=2
+        self.rank=rank
+
+    def shift(self,shift):
+        self.pos+=shift
+
 
     def xyzline(self):
         return "{:<3s}\t{:+.5f}\t{:+.5f}\t{:+.5f}\n".format(self.type,self.pos[0],self.pos[1],self.pos[2])
+
+
 
     def mpsentry(self):
         self.detrank
@@ -101,36 +126,30 @@ class molecule:
         self.name=None
         self.atomlist=[]
         self.coG=None
+
+    def calccoG(self):
+            coG=np.array([0,0,0])
+            for i in self.atomlist:
+                #print coG,i.pos
+                coG+=i.pos
+                
+            coG=coG/float(len(self.atomlist))
+            self.coG=coG
     
-    def readxyzfile(self,filename):
-        noofatoms=None
-        with open(filename,"r") as f:
-            for line in f.readlines():
-                if line[0]=="#":
-                    continue
-                entries=line.split()
-                if len(entries)==0:
-                    continue
-                elif len(entries)==1:
-                    noofatoms=int(entries[0])
-                elif len(entries)==4:
-                    name=entries[0]
-                    pos=np.array([float(entries[0]),float(entries[1]),float(entries[2])])
-                    self.atomlist.append(atom(name,pos))
-        self.coG()
-        return
+    
 
     def __add__(self,other):
+        atomlist=[]
         for i in other.atomlist:
-            self.atomlist.append(i)
-        self.coG()
-
-    def coG(self):
-        coG=np.array([0,0,0])
+            atomlist.append(i)
         for i in self.atomlist:
-            coG+=i.pos
-        coG=coG/float(len(self.atomlist))
-        self.coG=coG
+            atomlist.append(i)
+        newMol=molecule()
+        newMol.atomlist=atomlist
+        newMol.calccoG()    
+        return newMol
+
+    
         
     
     def copy(self):
@@ -140,11 +159,11 @@ class molecule:
 
         for i in self.atomlist:
             i.shift(shift)
-        self.coG()
+        self.calccoG()
 
     def updateatom(self,atom):
         for a in self.atomlist:
-            if np.isclose(a.pos,atom.pos) and a.type=atom.type:
+            if all(np.isclose(a.pos,atom.pos)) and a.type==atom.type:
                 a=atom
                 return
         self.atomlist.append(atom)
@@ -194,8 +213,9 @@ class molecule:
     def writexyz(self,filename,header=False):
         with open(filename,"w") as f:
             if header:
-                f.write("#Created by Python Script for Testing GWBSE\n")
                 f.write("{}\n".format(len(self.atomlist)))
+                f.write("#Created by Python Script for Testing GWBSE\n")
+                
             for atom in self.atomlist:
                 f.write(atom.xyzline())
 
@@ -208,6 +228,24 @@ class molecule:
             for atom in self.atomlist:
                 f.write(atom.mpsentry())
 
+    def readxyzfile(self,filename):
+            noofatoms=None
+            with open(filename,"r") as f:
+                for line in f.readlines():
+                    if line[0]=="#":
+                        continue
+                    entries=line.split()
+                    if len(entries)==0:
+                        continue
+                    elif len(entries)==1:
+                        noofatoms=int(entries[0])
+                    elif len(entries)==4:
+                        name=entries[0]
+                        pos=np.array(entries[1:],dtype=float)
+                        
+                        self.atomlist.append(atom(name,pos))
+            self.calccoG()
+            return
 
     def readmps(self,filename):
         line1=False
@@ -249,25 +287,25 @@ class molecule:
                     line1=False
                     line2=False
                     line3=False
-                    a=atom(element,r)
+                    at=atom(element,r)
                     if quad==None:
                         quad=np.zeros(5)
                     if d==None:
                         d=np.zeros(3)
-                    a.setmultipoles(q,d,quad,ptensor)
-                    self.updateatom(a)
+                    at.setmultipoles(q,d,quad,ptensor)
+                    self.updateatom(at)
         return
                     
 
 class job:
     
-    def __init__(self,name,template,shift=False,rotation=False):
+    def __init__(self,name,template,shift=None,rotation=None):
         self.name=str(name)
         self.options=None
         temp=""
-        if shift!=False:
+        if shift!=None:
             temp+="_s_{:1.2f}_{:1.2f}_{:1.2f}".format(shift[0],shift[1],shift[2])
-        if rotation!=False:
+        if rotation!=None:
             temp+="_r_{:1.1f}_{:1.1f}_{:1.1f}_{:1.2f}".format(rotation[0],rotation[1],rotation[2],rotation[3])
         self.setname(self.name+temp)
         self.template=os.path.abspath(template)
@@ -283,21 +321,23 @@ class job:
 
     def setup(self,xyzfile,mpsfile=None):     
         self.makefolder()
-        self.createdimer(xyzfile,mpsfile=None)  
+        self.createdimer(xyzfile,mpsfile=mpsfile)  
    
     def createdimer(self,infile,mpsfile=None):
-        mol=molecule()
-        mol.readxyz(os.path.join(self.template,xyzin)
+        mol1=molecule()
+        mol1.readxyzfile(os.path.join(self.template,infile))
         if mpsfile!=None:
-            mpsout="B.mps"
-            self.creatempsdimer(mpsin,mpsout)
-        mol2=mol.copy()
+            mpsout="molB.mps"
+            self.creatempsdimer(mpsfile,mpsout)
+        mol2=mol1.copy()
         if self.shift!=None:
             mol2.shift(self.shift)
         if self.rotation!=None:
             mol2.rotate(rotation)
-        mol=mol+mol2
-        mol.writexyz(os.path.join(self.path,"system.xyz"),header=True)      
+
+        dimer=mol1+mol2
+
+        dimer.writexyz(os.path.join(self.path,"system.xyz"),header=True)      
 
     def creatempsdimer(self,mpsin,mpsout):
         mol=molecule()
@@ -330,9 +370,9 @@ class job:
         shutil.copyfile(os.path.join(self.template,args.mps),os.path.join(self.path,"molA.mps"))
         self.writeoptionfile(self.readoptionfile(name,calcname=calcname),name)
         with cd(self.path):
-            if args.run:
-                print "Running {} for {}".format(name,self.name)
-                sp.check_output("xtp_tools -e {0} -o {1}.xml > {1}.log".format(calcname,name),shell=True)
+            
+            print "Running {} for {}".format(name,self.name)
+            sp.check_output("xtp_tools -e {0} -o {1}.xml > {1}.log".format(calcname,name),shell=True)
 
     def coupling(self):
         name="coupling"
@@ -346,9 +386,9 @@ class job:
             sp.call("ln -s molA.fort molB.fort".format(self.template,self.path),shell=True)
             sp.call("ln -s fort.7 system.fort".format(self.template,self.path),shell=True)
             
-            if args.run:
-                print "Running {} for {}".format(name,self.name)
-                sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
+
+            print "Running {} for {}".format(name,self.name)
+            sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
 
     def exciton(self):
         name="exciton"
@@ -357,10 +397,10 @@ class job:
         
         shutil.copyfile(os.path.join(self.template,"mbgft.xml"),os.path.join(self.path,"mbgft.xml"))
         shutil.copyfile(os.path.join(self.template,"gaussian_egwbse_molecule.xml"),os.path.join(self.path,"gaussian_egwbse_molecule.xml"))
-        if args.run:
-            with cd(self.path):
-                print "Running {} for {}".format(name,self.name)
-                sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
+        
+        with cd(self.path):
+            print "Running {} for {}".format(name,self.name)
+            sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
             
     def xcoupling(self):
         name="excitoncoupling"
@@ -370,18 +410,18 @@ class job:
         shutil.copyfile(os.path.join(self.template,"system.orb"),os.path.join(self.path,"molA.orb"))
         with cd(self.path):
             sp.call("ln -s molA.orb molB.orb".format(self.template,self.path),shell=True)
-            if args.run:
-                print "Running {} for {}".format(name,self.name)
-                sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
+            
+            print "Running {} for {}".format(name,self.name)
+            sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
 
 template=args.template
 distances,rotations=readoptionsfile(args.option)
 for i,distance in enumerate(reversed(distances)):
     for j,rotation in enumerate(rotations):
-        print "{} Distance {} of {}\t Rotation {} of {}".format(time.strftime("%H:%M:%S",gmtime()),i+1,len(distances),j+1,len(rotations))
+        print "{} Distance {} of {}\t Rotation {} of {}".format(time.strftime("%H:%M:%S",time.gmtime()),i+1,len(distances),j+1,len(rotations))
         jobs=job("job",template,shift=distance,rotation=rotation)
         if args.setup:
-            jobs.setup(args.xyz,args.mps)
+            jobs.setup(args.xyz,mpsfile=args.mps)
         if args.clcpl:
             jobs.classicalcoupling()
         if args.exciton:
