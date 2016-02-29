@@ -100,10 +100,10 @@ class atom:
         self.rank=rank
 
     def shift(self,shift):
-        print self.pos
-        print shift
+        #print self.pos
+        #print shift
         self.pos+=shift
-        print self.pos
+        #print self.pos
 
 
     def xyzline(self):
@@ -131,13 +131,8 @@ class molecule:
         self.coG=None
 
     def calccoG(self):
-            coG=np.array([0,0,0])
-            for i in self.atomlist:
-                #print coG,i.pos
-                coG+=i.pos
-                
-            coG=coG/float(len(self.atomlist))
-            self.coG=coG
+            
+            self.coG=self.calcgeomean()
     
     
 
@@ -197,33 +192,25 @@ class molecule:
     def rotate(self,rotation,r=None):
         axis=rotation[0:3]
         angle=rotation[-1]*np.pi/180.0
-        print angle
+        #print angle
         norm=axis/lg.norm(axis)
         crossproduktmatrix=np.array([[0,-norm[2],norm[1]],[norm[2],0,-norm[0]],[-norm[1],norm[0],0]])
         R=np.cos(angle)*np.identity(3)+np.sin(angle)*crossproduktmatrix+(1-np.cos(angle))*np.outer(norm,norm)
-        print R 
+        #print R 
         self.calccoG()
         if r==None:
-            
             save=self.coG
-            print self.coG
             self.shift(-save)
-            self.calccoG()
-            print self.coG
-            sys.exit()
             for i in self.atomlist:
                 i.pos=np.dot(R,i.pos)    
-            self.calccoG()
-            print self.coG
-            
             self.shift(save)
-            self.calccoG()
         else:
             save=r-self.coG
             self.shift(-save)
             for i in self.atomlist:
                 i.pos=np.dot(R,i.pos) 
             self.shift(np.dot(R,i.pos))    
+       self.calccoG()
             
     def writexyz(self,filename,header=False):
         with open(filename,"w") as f:
@@ -319,7 +306,7 @@ class job:
         self.options=None
         temp=""
         if shift!=None:
-            temp+="_s_{:1.2f}_{:1.2f}_{:1.2f}".format(shift[0],shift[1],shift[2])
+            temp+="_{:1.2f}_{:1.2f}_{:1.2f}".format(shift[0],shift[1],shift[2])
         if rotation!=None:
             temp+="_r_{:1.1f}_{:1.1f}_{:1.1f}_{:1.2f}".format(rotation[0],rotation[1],rotation[2],rotation[3])
         self.setname(self.name+temp)
@@ -364,7 +351,7 @@ class job:
     def readoptionfile(self,name,calcname=None):
         if calcname==None:
             calcname=name
-        templatefile=os.path.join(self.template,"OPTIONFILES/"+name+".xml")
+        templatefile=os.path.join(self.template,name+".xml")
         parser=lxml.XMLParser(remove_comments=True)
         tree = lxml.parse(templatefile,parser)
         root = tree.getroot()      
@@ -434,7 +421,7 @@ distances,rotations=readoptionsfile(args.option)
 for i,distance in enumerate(reversed(distances)):
     for j,rotation in enumerate(rotations):
         print "{} Distance {} of {}\t Rotation {} of {}".format(time.strftime("%H:%M:%S",time.gmtime()),i+1,len(distances),j+1,len(rotations))
-        jobs=job("job",template,shift=distance,rotation=rotation)
+        jobs=job("{:g}".format(lg.norm(distance)),template,shift=distance,rotation=rotation)
         if args.setup:
             jobs.setup(args.xyz,mpsfile=args.mps)
         if args.clcpl:
