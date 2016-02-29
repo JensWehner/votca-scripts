@@ -312,7 +312,10 @@ class job:
         self.setname(self.name+temp)
         self.template=os.path.abspath(template)
         self.shift=shift
-        self.rotation=rotation
+        if rotation[-1]==0:
+            self.rotation=None
+        else:
+            self.rotation=rotation
 
     def setname(self,name):
         self.name=name
@@ -324,6 +327,15 @@ class job:
     def setup(self,xyzfile,mpsfile=None):     
         self.makefolder()
         self.createdimer(xyzfile,mpsfile=mpsfile)  
+
+    def createmonomer(self,infile):
+        mol1=molecule()
+        mol1.readxyzfile(os.path.join(self.template,infile))
+        if self.shift!=None:
+            mol1.shift(self.shift)
+        if self.rotation!=None:
+            mol1.rotate(rotation)
+        mol1.writexyz(os.path.join(self.path,"molB.xyz"),header=True)      
    
     def createdimer(self,infile,mpsfile=None):
         mol1=molecule()
@@ -411,7 +423,12 @@ class job:
         shutil.copyfile(os.path.join(self.template,"bsecoupling.xml"),os.path.join(self.path,"bsecoupling.xml"))
         shutil.copyfile(os.path.join(self.template,"system.orb"),os.path.join(self.path,"molA.orb"))
         with cd(self.path):
-            sp.call("ln -s molA.orb molB.orb".format(self.template,self.path),shell=True)
+            if self.rotation!=None:
+                print "Molecules are rotated with respect to each other, starting monomer calculation"
+                
+            else:
+                print "Molecules are not rotated with respect to each other, just linking orb file"
+                sp.call("ln -s molA.orb molB.orb".format(self.template,self.path),shell=True)
             
             print "Running {} for {}".format(name,self.name)
             sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
