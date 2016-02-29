@@ -1,0 +1,53 @@
+#! /usr/bin/env python
+from __pyosshell__ import *
+from momo import osio
+
+osio.Connect()
+osio.AddArg('file', typ=str, default=None, help='Input tabular file')
+osio.AddArg('outfile', typ=str, default='out.hist', help='Output histogram file')
+osio.AddArg('col1', typ=int, default=1, help='Column 1 (bin direction)')
+osio.AddArg('col2', typ=int, default=2, help='Column 2')
+osio.AddArg('dx', typ=float, default=None, help='Bin size')
+osio.AddArg('density', typ=bool, default=False, help='Compute density')
+osio.AddArg('max', typ=bool, default=False, help='Normalize to maximum')
+options = osio.Parse()
+
+
+xs = []
+ys = []
+
+table = file_to_table(options.file)
+for t in table:
+	x = float(t[options.col1-1])
+	y = float(t[options.col2-1])
+	xs.append(x)
+	ys.append(y)
+
+
+avg_x, std_x = calc_avg_std(xs)
+avg_y, std_y = calc_avg_std(ys)
+print "<X>= %+1.7e +/- %+1.7e    <Y>= %+1.7e +/- %+1.7e" % (avg_x, std_x, avg_y, std_y)
+
+n_bins, bin_size, Xs, groups = bin_objects_1d(xs, ys, dv=options.dx)
+
+maxlen = len(groups[0])
+for i in range(n_bins):
+	g = groups[i]
+	if len(g) > maxlen: maxlen = len(g)
+
+ofs = open(options.outfile, 'w')
+for i in range(n_bins):
+	X = Xs[i]
+	g = groups[i]
+	if not len(g): continue
+	if options.col1 != options.col2:
+		avg, std = calc_avg_std(g)
+		ofs.write('%+1.7f %+1.7e %+1.7e\n' % (X, avg, std))
+	else:
+		if options.density:
+			ofs.write('%+1.7f %+1.7e\n' % (X, float(len(g))/len(xs)))
+		elif options.max:
+			ofs.write('%+1.7f %+1.7e\n' % (X, float(len(g))/maxlen))
+		else:
+			ofs.write('%+1.7f %d\n' % (X, len(g)))
+ofs.close()

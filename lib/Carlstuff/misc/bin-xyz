@@ -1,0 +1,51 @@
+#! /usr/bin/env python
+from __pyosshell__ import *
+from momo import osio
+
+osio.Connect()
+osio.AddArg('file', typ=str, default=None, help='Input tabular file')
+osio.AddArg('outfile', typ=str, default='out.hist', help='Output histogram file')
+osio.AddArg('x', typ=int, default=1, help='Column 1 (1st bin direction)')
+osio.AddArg('y', typ=int, default=2, help='Column 2 (2nd bin direction)')
+osio.AddArg('z', typ=int, default=3, help='Column 3')
+osio.AddArg('dx', typ=float, default=None, help='Bin size x')
+osio.AddArg('dy', typ=float, default=None, help='Bin size y')
+osio.AddArg('mode', typ=str, default='average', help="'average' or 'count'")
+options = osio.Parse()
+
+xs = []
+ys = []
+zs = []
+
+table = file_to_table(options.file)
+for t in table:
+	x = float(t[options.x-1])
+	y = float(t[options.y-1])
+	z = float(t[options.z-1])
+
+	xs.append(x)
+	ys.append(y)
+	zs.append(z)
+
+Nx, Ny, dx, dy, XYs, groups = bin_objects_2d(xs, ys, zs, dx=options.dx, dy=options.dy)
+
+ofs = open(options.outfile, 'w')
+for i in range(Nx):
+	for j in range(Ny):
+		X = XYs[i][j][0]
+		Y = XYs[i][j][1]
+		g = groups[i][j]		
+			
+		if options.mode == 'average':
+			if not len(g):
+				avg = std = 0
+			else:
+				avg, std = calc_avg_std(g)
+			ofs.write('%+1.7f %+1.7f %+1.7e %+1.7e %4d %4d\n' % (X, Y, avg, std, i, j))
+		elif options.mode == 'count':
+			ofs.write('%+1.7f %d\n' % (X, len(g)))
+		else:
+			raise NotImplementedError("No such mode: '%s'" % options.mode)
+	ofs.write('\n')
+ofs.close()
+

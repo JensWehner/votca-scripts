@@ -100,7 +100,10 @@ class atom:
         self.rank=rank
 
     def shift(self,shift):
+        print self.pos
+        print shift
         self.pos+=shift
+        print self.pos
 
 
     def xyzline(self):
@@ -193,16 +196,28 @@ class molecule:
 
     def rotate(self,rotation,r=None):
         axis=rotation[0:3]
-        angle=rotation[-1]
+        angle=rotation[-1]*np.pi/180.0
+        print angle
         norm=axis/lg.norm(axis)
         crossproduktmatrix=np.array([[0,-norm[2],norm[1]],[norm[2],0,-norm[0]],[-norm[1],norm[0],0]])
         R=np.cos(angle)*np.identity(3)+np.sin(angle)*crossproduktmatrix+(1-np.cos(angle))*np.outer(norm,norm)
+        print R 
+        self.calccoG()
         if r==None:
+            
             save=self.coG
+            print self.coG
             self.shift(-save)
+            self.calccoG()
+            print self.coG
+            sys.exit()
             for i in self.atomlist:
                 i.pos=np.dot(R,i.pos)    
+            self.calccoG()
+            print self.coG
+            
             self.shift(save)
+            self.calccoG()
         else:
             save=r-self.coG
             self.shift(-save)

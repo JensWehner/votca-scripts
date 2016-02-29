@@ -1,0 +1,63 @@
+#! /usr/bin/env python
+from __pyosshell__ import get_files
+from __lxml__ import etree, XmlTree
+from momo import osio, endl, flush
+
+
+osio.Connect()
+osio.AddArg('mode', typ=str, default='concatenate', help="'concatenate' or 'alternate'")
+osio.AddArg('outfile', typ=str, default='jobs.merged.xml')
+osio.AddArg('pattern', typ=str, default='^jobs.+.*\.xml$')
+osio.AddArg('list', typ=(list,str), default=[])
+osio.AddArg('sort', typ=bool, default=False)
+options = osio.Parse()
+
+# Find jobfiles
+if options.list == []:
+	jobfiles = get_files('./', options.pattern)
+	jobfiles = sorted(jobfiles)
+	if options.outfile in jobfiles:
+		jobfiles.remove(options.outfile)
+	osio << "Merging jobfiles: pattern='%s', mode='%s' => '%s'" % \
+		(options.pattern, options.mode, options.outfile) << endl
+else:
+	osio << "Merging jobfiles: %s, mode='%s' => '%s'" % \
+		(options.list, options.mode, options.outfile) << endl
+	jobfiles = options.list
+for jobfile in jobfiles:
+	osio << osio.item << jobfile << endl
+
+# Setup XML tree
+root = etree.Element('jobs')
+
+# Merge
+if options.mode == 'concatenate':
+	for jobfile in jobfiles:
+		tree = XmlTree(jobfile)
+		jobs = tree.GetAll('job')
+		for job in jobs:
+			root.append(job.node)
+elif options.mode == 'alternate':
+	jobs_list = []
+	for jobfile in jobfiles:
+		tree = XmlTree(jobfile)
+		jobs = tree.GetAll('job')
+		if options.sort: jobs = sorted(jobs, key=lambda j: j['id'](int))
+		jobs_list.append(jobs)
+
+	N_jobs = len(jobs_list[0])
+	for i in range(len(jobs_list)-1):
+		assert len(jobs_list[i]) == len(jobs_list[i+1])
+
+	for i in range(N_jobs):
+		for jobs in jobs_list:
+			root.append(jobs[i].node)
+else:
+	raise NotImplementedError
+
+# Output	
+ofs = open(options.outfile, 'w')	
+ofs.write(etree.tostring(root, pretty_print=True))
+ofs.close()
+	
+

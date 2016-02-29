@@ -1,0 +1,391 @@
+#! /usr/bin/env python
+from __evp_assist__ import *
+
+par = arg.ArgumentParser(description='IN-SILICO EVAPORATION WITH GROMACS')           
+        
+par.add_argument('-m', '--mols',
+    dest='mols',   
+    action='store', 
+    required=False, 
+    nargs='*',
+    metavar='mol:nr',
+    default=[],
+    help = 'List of molecules to evaporate, formatted as mol:nr (e.g. C60:256)')
+    
+par.add_argument('-b', '--bulk',
+    dest='bulk',
+    action='store',
+    required=False,
+    type=float,
+    metavar='[nm]',
+    default=100,
+    help = 'Target bulk thickness (default 100nm), including substrate.')
+
+par.add_argument('-t', '--time', 
+    dest='time', 
+    action='store',
+    required=False, 
+    type=int,
+    metavar='[ps]', 
+    default=50,
+    help = 'Run time per iteration')
+    
+par.add_argument('-k', '--keep',
+    dest='keep',
+    action='store',
+    required=False,
+    type=int,
+    metavar='nr',
+    default=10,
+    help = 'Only every n-th iteration folder kept during cleaning')
+
+par.add_argument('--maxiter',
+    dest='maxiter',
+    action='store',
+    required=False,
+    type=int,
+    metavar='nr',
+    default=2000,
+    help='Maximum number of iterations to run')
+    
+par.add_argument('--molrate',
+    dest='molrate',
+    action='store',
+    required=False,
+    type=int,
+    metavar='nr',
+    default=2,
+    help='Maximum number of molecules to insert per iteration')
+
+par.add_argument('-c', '--cluster', 
+    dest='cluster', 
+    action='store_const', 
+    const=True, 
+    default=False,
+    help = 'To run on cluster')
+    
+par.add_argument('-r', '--run',   
+    dest='run',
+    action='store_const', 
+    const=True, 
+    default=False,
+    help = 'To run evaporation')
+
+par.add_argument('--restart',
+    dest='restart',
+    action='store',
+    required=False,
+    type=int,
+    metavar='i',
+    default=1,
+    help='(Re)start from iteration i-1')
+
+par.add_argument('--autorestart',
+    dest='autorestart',
+    action='store_const',
+    const=True,
+    default=False,
+    help = 'Automatically restart from latest completed iteration')
+
+par.add_argument('--tag',
+    dest='tag',
+    action='store',
+    required=False,
+    type=str,
+    metavar='tag',
+    default= multi_char_replace(os.getcwd().split('/')[-1],' -+:','____'),
+    help='Tag to be used for cluster submission; overrides value in ctrl-file')
+
+par.add_argument('-T', '--temp',
+    dest='temperature',
+    action='store',
+    required=False,
+    type=float,
+    metavar='T[K]',
+    default=None,
+    help='Temperature for T-coupling of substrate+thinfilm; overrides values in ctrl-file')
+
+par.add_argument('--username',
+    dest='username',
+    action='store',
+    required=False,
+    type=str,
+    metavar='uname',
+    default=getpass.getuser(),
+    help='Username, used for cluster batch jobs (__cluster__.py)')
+
+par.add_argument('--maxwarn',
+    dest='maxwarn',
+    action='store',
+    type=int,
+    metavar='w',
+    default=4,
+    help='Maximum acceptable warnings issued by grompp. \
+     NOTE: Uncritical warnings are issued regarding CoM  \
+     motion removal and charge-group radius for wrapped trajectories.')
+     
+par.add_argument('--nicejob',
+    dest='nicejob',
+    action='store_const',
+    const=True,
+    default=False,
+    help='Only submits if "qstat -u uname" features no waiting (qw) jobs.')
+     
+par.add_argument('--nofreeze',
+    dest='nofreeze',
+    action='store_const',
+    const=True,
+    default=False,
+    help='Freeze group not used if argument present')
+    
+par.add_argument('--status',
+	dest='status',
+	action='store_const',
+	const=True,
+	default=False,
+	help='Print status (execute on root folder level), then exit.')
+	
+par.add_argument('--equiltemp', 
+    dest='equiltemp', 
+    action='store',
+    required=False, 
+    type=float,
+    metavar='[K]', 
+    default=300,
+    help='Equilibration temperature, default is 300K.')
+    
+par.add_argument('--equiltime',
+	dest='equiltime',
+	action='store',
+	required=False,
+	type=float,
+	metavar='[ps]',
+	default=5000,
+	help='Equilibration time, default is 5000ps.')
+
+par.add_argument('--verbose',
+	dest='verbose',
+	action='store_const',
+	const=True,
+	default=False,
+	help='The wordy version. Not yet in frequent use.')
+
+	
+	
+
+ARGS = par.parse_args()
+
+
+# =============================================================== #
+#              SIMULATION META PARAMETERS, VARIABLES              #
+# =============================================================== #
+
+
+RESTART_WITH_ITER	= ARGS.restart	# Continues from ITER -1
+RESTART_FROM_TIME	= 0				# Continues from TIME
+
+RUN_TIME_ITER		= ARGS.time		# Run time [ps] per iter
+MAX_MOLS_ITER		= ARGS.molrate	# No. mol.s evap per iter
+MAX_ITER			= ARGS.maxiter  # Max iterations to run
+KEEP_EVERY_NTH_ITER = ARGS.keep		# Folders to keep
+
+ON_CLUSTER          = ARGS.cluster	# Run on cluster or not
+RUN					= ARGS.run		# Run in the first place?
+EQUILIBRATE_ONLY	= False
+EQUILTIME_AT_START	= 0
+
+RESTART_FROM_MOLS	= { }
+MOLS_TARGET 		= { }
+BULK_TARGET         = ARGS.bulk
+
+GRO					= 'system.gro'
+TOP					= 'system.top'
+NDX					= 'system.ndx'
+CTR					= 'system.ctrl'
+HST					= 'system.hist'
+
+SYSTEM_DIR			= './SYSTEM'
+REQUIRED_DIRS		= []
+REQUIRED_DIRS	   += [ './SYSTEM/FORCEFIELD' ]
+
+
+# STATUS CHECK VIA "evaporate --status"
+if ARGS.status:
+	obtain_status(GRO,TOP,NDX,CTR,HST,'ITER_')
+
+# AUTOMATIC RESTARTING PROTOCOL
+if ARGS.autorestart:
+	ARGS.restart, ARGS.mols, mols_current, iter_time = \
+	    autorestart_find_next_iter(GRO,TOP,NDX,CTR,HST,iter_prefix='ITER_')
+	if ARGS.restart == None:
+		print "No restart possible."
+		sys.exit(1)
+	RESTART_WITH_ITER = ARGS.restart
+	if mols_current == ARGS.mols:
+		print "Evaporation complete, equilibrate only ..."
+		last_iter = ARGS.restart-1
+		prev_mols = ARGS.mols
+		ARGS.restart, ARGS.mols, mols_current, iter_time = \
+		    autorestart_find_next_iter(GRO,TOP,NDX,CTR,HST,iter_prefix='EQUI_')
+		if ARGS.restart == None:
+			EQUILIBRATE_ONLY = False
+			ARGS.restart = last_iter+1
+			ARGS.mols = prev_mols
+			print "Start equilibrating system"
+		else:
+			EQUILIBRATE_ONLY = True
+			EQUILTIME_AT_START = (ARGS.restart - last_iter - 1)*ARGS.time
+			print "System already equilibrated for t = %sps" % EQUILTIME_AT_START
+		RESTART_WITH_ITER = ARGS.restart
+		if not ARGS.nofreeze:
+			print "NOTE: Disabling freeze-group during equilibration."
+			ARGS.nofreeze = True
+	else:
+		print "Auto-restart with iteration %d, evaporation target is %s" \
+	    	% (ARGS.restart, ARGS.mols)
+
+# ESTABLISH EVAPORATION TARGET
+if ARGS.mols == []: 
+	print "Evaporate ... what exactly?"
+	print "(--mols argument missing)"; 
+	sys.exit(0)
+for mol in ARGS.mols:
+	sp = mol.split(':')
+	molname = sp[0]
+	moltarget = int(sp[1])
+	RESTART_FROM_MOLS[molname] = 0
+	MOLS_TARGET[molname] = moltarget
+for key in MOLS_TARGET.keys():
+	REQUIRED_DIRS.append('%s/EVAPORATOR_%s' % (SYSTEM_DIR,key))
+
+
+# COMMAND-LINE OPTIONS SUMMARY
+print "Evaporate species:"
+for key in MOLS_TARGET.keys():
+	print "... Mol %-10s # = %-4d" % (key, MOLS_TARGET[key])
+print "Required directories:"
+for item in REQUIRED_DIRS:
+	print "... Dir = %s" % item
+print "LOCAL MACHINE & CLUSTER ========================================"
+print "Process ID:                         PID     = %s" % os.getpid()
+print "Username:                           user    = %s" % ARGS.username
+print "Run on cluster:                     cluster = %s" % ON_CLUSTER
+print "Nice job:                           patient = %s" % ARGS.nicejob
+print "EVAPORATION BY ITERATIONS ======================================"
+print "ID tag for evaporation (override):  tag     = %s" % ARGS.tag
+print "Run evaporation:                    run     = %s" % RUN
+print "Start from iteration:               i       = %d" % RESTART_WITH_ITER
+print "Run time per iteration:             dt      = %1.1fps" % RUN_TIME_ITER
+print "Max. # of injections per iteration: N_inj   = %d" % MAX_MOLS_ITER
+print "Max. # of iterations:               N_max   = %d" % MAX_ITER
+print "Keep every n-th iteration:          n       = %d" % KEEP_EVERY_NTH_ITER
+print "OVERRIDDEN MD PARAMETERS ======================================="
+print "T-coupling sub+thf (override):      T       = %s" % ARGS.temperature
+print "Targeted equilibration time:        dt |E   = %s" % ARGS.equiltime
+print "Equilibration temperature:          T  |E   = %s" % ARGS.equiltemp
+
+
+# USER-DEFINED COMMANDS
+EVO_STEP_CMDS		= []            # Command to exe every n-th step
+                                    # during evolve(...)
+EVO_STEP_CMDS.append([ 1e10, 'editconf -f %s -o %s -c > /dev/null 2> /dev/null' % (GRO,GRO) ])
+
+
+# FORWARD GLOBAL SYSTEM VARIABLES
+SIM_TIME	= RESTART_FROM_TIME		# Sim. t since (re)start
+MOL_COUNT	= RESTART_FROM_MOLS		# Evap.s since (re)start
+SIM_ITER	= 0				        # Iter.s since (re)start
+EVO_STEP	= RESTART_WITH_ITER - 1	# Iter.s since start
+
+
+set_globals(RESTART_WITH_ITER, RESTART_FROM_TIME, RUN_TIME_ITER,
+            MAX_MOLS_ITER, MAX_ITER, RESTART_FROM_MOLS, MOLS_TARGET,
+            ON_CLUSTER, RUN, GRO, TOP, NDX, CTR, HST, SYSTEM_DIR,
+            REQUIRED_DIRS, SIM_TIME, MOL_COUNT, SIM_ITER, EVO_STEP,
+            EVO_STEP_CMDS, KEEP_EVERY_NTH_ITER, ARGS, BULK_TARGET)
+
+
+
+# =============================================================== #
+if not EQUILIBRATE_ONLY: originate('ITER_')
+else: originate('EQUI_')
+print "System is set up, proceed."
+
+while not enough_mols() and not enough_iters():	
+	clean_if_applicable('ITER_')
+	
+	# Advances EVO_STEP
+	evolve(from_dir	= 'ITER_',
+	       to_dir   = 'ITER_', 
+	       nr_evaps	= None,
+	       t_in		= None,
+	       t_run	= None)
+	
+	# Advances SIM_TIME
+	if not simulate(in_dir = 'ITER_'):
+		break
+	
+	# Advances SIM_ITER
+	log_iter(in_dir = 'ITER_')	
+
+
+if enough_iters():
+	print "Exceed maximum number of iterations. Exit."
+	sys.exit(0)
+
+if enough_mols() and not EQUILIBRATE_ONLY:
+	print "Reached evaporation target. Last round ..."
+	
+	# Advances EVO_STEP
+	evolve(from_dir	= 'ITER_',
+	       to_dir   = 'EQUI_', 
+	       nr_evaps	= 0,
+	       t_in		= None,
+	       t_run	= None)
+	
+	# Advances SIM_TIME
+	if not simulate(in_dir = 'EQUI_'):
+		print "Final run did not finish."
+		pass
+
+	# Advances SIM_ITER
+	log_iter(in_dir = 'EQUI_')
+	
+
+if enough_iters() and not enough_mols():
+	print "Exceeded maximum number of iterations. Stop."
+
+
+print "Equilibrating structure at %1.1fK for %1.1fps" \
+    % (ARGS.equiltemp,ARGS.equiltime)
+ARGS.temperature = ARGS.equiltemp
+equiltime = EQUILTIME_AT_START
+while equiltime < ARGS.equiltime:
+	clean_if_applicable('EQUI_')
+	
+	# Advances EVO_STEP
+	evolve(from_dir = 'EQUI_',
+	       to_dir 	= 'EQUI_',
+	       nr_evaps = 0,
+	       t_in		= None,
+	       t_run	= None)
+	
+	equiltime += ARGS.time
+	
+	# Advances SIM_TIME
+	if not simulate(in_dir = 'EQUI_'):
+		break
+	
+	# Advances SIM_ITER
+	log_iter(in_dir = 'EQUI_')
+
+print "Equilibration complete."
+sys.exit(0)
+	
+	
+	
+
+
+
+
+

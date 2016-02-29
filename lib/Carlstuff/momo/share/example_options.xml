@@ -1,0 +1,10 @@
+<options>
+	<sth>else</sth>
+	<time>1e-12</time>
+	<subpartition type="cubic">true</subpartition>
+	<sub>
+		<sub1>0.3</sub1>
+		<sub1>0.4</sub1>
+		<sub1>0.5</sub1>
+	</sub>
+</options>

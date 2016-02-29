@@ -1,0 +1,403 @@
+#! /usr/bin/env python
+import numpy as np
+from momo import osio, endl, flush, os, sys
+from momoxml import *
+import base64
+
+# TODO Sort frames along path
+# TODO <sort> option: sozi-make -f in.svg --sort labels
+# TODO Add support for cloned structures (=> master frames)
+# TODO Move frames counter + menu to lower left
+
+# PROGRAM OPTIONS
+osio.Connect()
+osio.AddArg('file', typ=str, default=None)
+osio.AddArg('output', typ=str, default='')
+osio.AddArg('verbose', typ=bool, default=False)
+osio.AddArg('testonly', typ=bool, default=False)
+options = osio.Parse()
+
+# NAMESPACES
+SVG_NS = '{http://www.w3.org/2000/svg}'
+INX_NS = '{http://www.inkscape.org/namespaces/inkscape}'
+SOZI_NS = '{http://sozi.baierouge.fr}'
+XLINK_NS = '{http://www.w3.org/1999/xlink}'
+
+MIMESUBTEXT = {
+'png' :'.png',
+'bmp' :'.bmp',
+'jpeg':'.jpg',
+'jpg' :'.jpg',
+'icon':'.ico',
+'gif' :'.gif'
+}
+
+# PROCESS OPTIONS
+in_svg = options.file
+if options.output != '':
+	out_svg = options.output
+else:
+	sp = in_svg.split('.')
+	out_svg = ''
+	for i in range(len(sp)-1):
+		out_svg += sp[i]+'.'
+	out_svg += 'packed.svg'
+VERBOSE = options.verbose
+
+# SANITY CHECKS
+if not os.path.isfile(in_svg):
+	raise IOError("No such svg-file: '%s'" % in_svg)
+osio << "Source: '%s' => Target: '%s'" % (in_svg, out_svg) << endl
+
+has_nonlocal_files = False
+has_embedded_files = False
+
+# SVG TREE
+tree = XmlTree(in_svg)
+svg = tree.GetRoot()
+gs = tree.GetAll('%sg' % SVG_NS)
+img_local_names = {}
+for g in gs:
+	g_images = g.DiveForAll('%simage' % SVG_NS)
+	for img in g_images:
+		data = img.node.attrib['%shref' % XLINK_NS]
+		if data[0:5] == 'data:':
+			comma = data.find(',')
+			if comma>0:
+				#get extension
+				fileext=''
+				semicolon = data.find(';')
+				if semicolon>0:
+					for sub in MIMESUBTEXT.keys():
+						if sub in data[5:semicolon].lower():
+							fileext=MIMESUBTEXT[sub]
+							path='linked.extracted%s' % (fileext)
+							#if (not os.path.isabs(path)):
+							#    if os.name == 'nt':
+							#        path = os.path.join(os.environ['USERPROFILE'],path)
+							#    else:
+							#        path = os.path.join(os.path.expanduser("~"),path)
+							i = 0
+							while path in img_local_names:
+								i += 1
+								path = 'linked.extracted.%d%s' % (i, fileext)
+							img_local_names[path] = True
+							osio << 'EXTRACT %s' % path << endl			
+							break 
+					#save
+					has_embedded_files = True
+					if not options.testonly:
+						data = base64.decodestring(data[comma:])
+						open(path,'wb').write(data)
+						img.node.attrib['%shref' % XLINK_NS] = path
+					else:
+						osio << osio.my << "Test only - image file not generated." << endl
+				else:
+					inkex.errormsg(_('Unable to find image data.'))		
+		else:
+			if data[0:5] == 'file:': data = data[7:]
+			base_img_name = os.path.basename(data)
+			if data == base_img_name:
+				osio << "LOCAL   " << data << endl
+				img_local_names[base_img_name] = True
+				continue
+			else:
+				incr_img_name = 'linked.'+base_img_name
+				i = 0
+				while img_local_names.has_key(incr_img_name):
+					i += 1
+					incr_img_name = 'linked.%d.%s' % (i,base_img_name)					
+				osio << "LINK   " << data << endl # << "=>" << incr_img_name << endl
+				img.node.attrib['%shref' % XLINK_NS] = incr_img_name
+				img_local_names[incr_img_name] = True
+				if not incr_img_name in os.listdir('./'):
+					has_nonlocal_files = True
+					if not options.testonly:
+						osio >> 'cp %s %s' % (data, incr_img_name)
+					else:
+						osio << osio.my << "Test only - image file not copied to local directory." << endl
+
+if not options.testonly:
+	svg_ofs = open(out_svg, 'w')
+	svg_ofs.write(etree.tostring(tree.GetRoot(), pretty_print=True))
+	svg_ofs.close()
+else:
+	osio << osio.my << "Test only - no svg-output generated." << endl
+	if not has_nonlocal_files and not has_embedded_files:
+		osio << osio.mg << "All local." << endl
+		sys.exit(0)
+	else:
+		osio << osio.mr << "Nonlocal or embedded files." << endl
+		sys.exit(1)
+
+"""
+# GENERATE FRAMES
+frames = []
+osio << "Generating frames from layer '%s'" % FRAMES_LABEL << endl
+gs_frames = tree.GetAllWhere('%sg' % SVG_NS, key=lambda x: x.node.attrib['%slabel' % INX_NS] if x.node.attrib.has_key('%slabel' % INX_NS) else '', value=FRAMES_LABEL)
+for g in gs_frames:
+	g_rects = g.DiveForAll('%srect' % SVG_NS)
+	for rect in g_rects:
+		new_frame = Frame(node=rect.node)
+		frames.append(new_frame)
+
+
+# GENERATE TRAJECTORY
+paths = []
+osio << "Generating trajectory from layer '%s'" % FRAMES_LABEL << endl
+for g in gs_frames:
+	g_paths = g.DiveForAll('%spath' % SVG_NS)
+	for path in g_paths:
+		new_path = Path(node=path.node)
+		paths.append(new_path)
+trajs = []
+for p in paths:
+	if p.id.lower() == 'trajectory':
+		trajs.append(p)
+if len(trajs) > 1:
+	osio << "ERROR More than one trajectory (path id 'trajectory') defined in layer '%s'" % FRAMES_LABEL << endl
+	osio.xxquit('Abort.')
+if len(trajs):
+	traj = trajs[0]
+else:
+	traj = None
+
+
+# GENERATE SEQUENCE QUALIFIERS
+sequ_texts = []
+osio << "Generating sequence from layer '%s'" % FRAMES_LABEL << endl
+gs = tree.GetAllWhere('%sg' % SVG_NS, key=lambda x: x.node.attrib['%slabel' % INX_NS] if x.node.attrib.has_key('%slabel' % INX_NS) else '', value=FRAMES_LABEL)
+for g in gs:
+	g_texts = g.DiveForAll('%stext' % SVG_NS)
+	for text in g_texts:
+		new_text = Text(node=text.node)
+		if new_text.IsNumber():
+			sequ_texts.append(new_text)
+
+if options.verbose:
+	print "Sequence texts:"
+	for t in sequ_texts:
+		print "SEQU", t.text
+
+
+
+if options.sort == 'x':
+	osio << "Sort frames along x" << endl
+	frames = sorted(frames, key=lambda f: f.rect.x)
+	for f in frames:
+		f.rank = frames.index(f)+1
+elif options.sort == 'xy':
+	osio << "Sort frames along x, then along y" << endl
+	avg_h = 0.0
+	avg_w = 0.0
+	for f in frames:
+		avg_h += f.rect.h
+		avg_w += f.rect.w
+	avg_h /= len(frames)
+	avg_w /= len(frames)	
+	xs = [ f.rect.x for f in frames ]
+	n_bins, d_bin, x_bin, x_fs = bin_objects_1d(xs, frames, dv=0.5*avg_w)
+	sorted_frames = []
+	for fs in x_fs:
+		fs = sorted(fs, key=lambda f: f.rect.y)
+		sorted_frames = sorted_frames + fs
+	frames = sorted_frames
+elif options.sort == 'labels':
+	# ASSIGN SEQUENCE QUALIFIERS
+	osio << "Assigning sequence qualifiers to frames" << endl
+	unranked_frames = frames
+	osio << "Created %d frames" % len(frames) << endl
+	ranked_frames = []
+	for text in sequ_texts:
+		if unranked_frames == []: break
+		min_dr2 = np.dot(text.xy-frames[0].rect.xy, text.xy-frames[0].rect.xy)
+		closest_frame = frames[0]
+		for frame in unranked_frames:
+			dr2 = np.dot(text.xy-frame.rect.xy, text.xy-frame.rect.xy)
+			if dr2 < min_dr2:
+				min_dr2 = dr2
+				closest_frame = frame
+		closest_frame.SetRank(text.text, min_dr2**0.5)
+		unranked_frames.remove(closest_frame)
+		ranked_frames.append(closest_frame)
+	frames = ranked_frames
+	frames = sorted(frames, key=lambda f: f.rank if not options.reverse_frames else -f.rank)
+elif options.sort == 'path':
+	osio << "Installing trajectory" << endl
+	if traj == None:
+		osio.xxquit('Sort by trajectory, but no trajectory defined.')
+	ranked_frames = []
+	n_cutoff = 0
+	for xy in traj.xys:
+		min_dr2 = np.dot(xy-frames[0].rect.xy, xy-frames[0].rect.xy)
+		closest_frame = frames[0]
+		for frame in frames:
+			dr2 = np.dot(xy-frame.rect.xy, xy-frame.rect.xy)
+			if dr2 < min_dr2:
+				min_dr2 = dr2
+				closest_frame = frame
+		if min_dr2 > 10*10:
+			n_cutoff += 1
+			continue
+		if closest_frame in ranked_frames:
+			# This frame will be visited multiple times
+			new_frame = Frame(closest_frame.node)
+			ranked_frames.append(new_frame)
+		else:
+			ranked_frames.append(closest_frame)
+	frames = ranked_frames
+	osio << "%d stop(s) not assigned due to cut-off" % n_cutoff << endl
+else:
+	assert False
+osio << "Created %d ranked frames" % len(frames) << endl
+
+frame_idx = 0
+for frame in frames:
+	frame_idx += 1
+	frame.SetSequenceIndex(frame_idx)
+
+# PROCESS CONTROLS
+controls_texts = []
+osio << "Reading controls from layer '%s'" % CONTROLS_LABEL << endl
+gs_controls = tree.GetAllWhere('%sg' % SVG_NS, key=lambda x: x.node.attrib['%slabel' % INX_NS] if x.node.attrib.has_key('%slabel' % INX_NS) else '', value=CONTROLS_LABEL)
+for g in gs_controls:
+	g_texts = g.DiveForAll('%stext' % SVG_NS)
+	for text in g_texts:
+		new_text = Text(node=text.node)
+		controls_texts.append(new_text)
+
+defaults_text = None
+protocol_text = None
+for text in controls_texts:
+	if text.IsEmpty(): continue
+	if 'DEFAULTS' in text.lines[0]:
+		defaults_text = text
+		osio << "Found defaults" << endl
+	elif 'PROTOCOL' in text.lines[0]:
+		osio << "Found protocol" << endl
+		protocol_text = text
+	else:
+		osio << osio.mr << "Ignoring text object in controls layer: '%s ...'" % text.lines[0] << endl
+
+# CONFIGURE CONTROLS DEFAULTS
+if defaults_text != None:
+	osio << "Installing slide defaults" << endl
+	expand_abbrev = {}
+	defaults = {}
+	for ln in defaults_text.lines:
+		if 'DEFAULTS' in ln: continue
+		sp = ln.split('=')
+		full = sp[0].strip()
+		short = sp[1].strip()
+		value = sp[2].strip()
+		expand_abbrev[short] = full
+		expand_abbrev[full] = full
+		defaults[full] = value
+	for f in frames:
+		f.UpdateProperties(defaults)
+
+# SPECIALIZE CONTROLS
+if protocol_text != None:
+	osio << "Installing protocol" << endl
+	id_props = {}
+	for ln in protocol_text.lines:
+		if 'PROTOCOL' in ln: continue
+		sp = ln.split()
+		if sp[0] == '#' or sp[0][0] == '#': continue
+		id = int(sp[0])
+		props = {}
+		for i in range(1, len(sp)):
+			abbrev_value = sp[i].split('=')
+			full_key = expand_abbrev[abbrev_value[0].strip()]
+			value = abbrev_value[1].strip()
+			props[full_key] = value
+		id_props[id] = props
+	for f in frames:
+		try:
+			props = id_props[f.rank]
+			if VERBOSE: osio << osio.item << "Slide id" << f.rank << endl
+		except KeyError:
+			props = {}
+		f.UpdateProperties(props)
+
+# EMBED SCRIPTS & STYLES IF NECESSARY
+svg.attrib["%snote" % SOZI_NS]="Sozi with canvas-embedded controls"
+
+scripts = tree.GetAll('%sscript' % SVG_NS)
+script_ids = []
+for s in scripts:
+	if s.node.attrib.has_key("id"):
+		script_ids.append(s.node.attrib["id"])
+styles = tree.GetAll('%sstyle' % SVG_NS)
+style_ids = []
+for s in styles:
+	if s.node.attrib.has_key("id"):
+		style_ids.append(s.node.attrib["id"])
+
+embed_js_main = False if 'sozi-script' in script_ids else True
+embed_js_media = False if 'sozi-extras-media-script' in script_ids else True
+embed_css = False if 'sozi-style' in style_ids else True
+
+if embed_js_main:
+	osio << "Embedding controls script" << endl
+	sozi_js_main = '%s/sozi.min.js' % (SOZI_PATH)
+	text_js_main = (open(sozi_js_main, 'r').read())
+	node_js_main = etree.SubElement(svg, 'script', attrib={"id":"sozi-script", "%sversion" % SOZI_NS:"13.11-30213629"})
+	node_js_main.text = text_js_main
+else:
+	osio << "Detected controls script" << endl
+if embed_js_media:
+	osio << "Embedding media script" << endl
+	sozi_js_media = '%s/sozi_extras_media.min.js' % (SOZI_PATH)
+	text_js_media = (open(sozi_js_media, 'r').read())
+	node_js_media = etree.SubElement(svg, 'script', attrib={"id":"sozi-extras-media-script", "%sversion" % SOZI_NS:"13.11-30213629"})
+	node_js_media.text = text_js_media
+else:
+	osio << "Detected media script" << endl
+if embed_css:
+	osio << "Embedding css-style" << endl
+	sozi_css = '%s/sozi.min.css' % (SOZI_PATH)	
+	text_css = (open(sozi_css, 'r').read())	
+	node_css = etree.SubElement(svg, 'style',  attrib={"id":"sozi-style", "%sversion" % SOZI_NS:"13.11-30213629"})	
+	node_css.text = text_css
+else:
+	osio << "Detected css-style" << endl
+
+# EMBED FRAMES
+osio << "Embedding frames " << endl
+prev_id = -1
+for f in frames:
+	node = f.ToElement()
+	for child in node:
+		svg.append(child)
+	prev_id = f.sequ_id
+if options.mirror:
+	frames.pop(-1)
+	frames.reverse()
+	for f in frames:
+		f.SetSequenceIndex(prev_id+1)
+		node = f.ToElement()
+		for child in node:
+			svg.append(child)
+		prev_id += 1
+
+if options.hide_frames:
+	for g in gs_frames:
+		g.node.attrib["style"] = "display:none"
+if options.hide_controls:
+	for g in gs_controls:
+		g.node.attrib["style"] = "display:none"
+
+# COMPILE SVG FILE
+osio << "Compiling svg-file," << flush
+svg_ofs = open(out_svg, 'w')
+svg_ofs.write(etree.tostring(tree.GetRoot(), pretty_print=True))
+svg_ofs.close()
+osio << "done." << endl
+"""
+
+
+
+
+
+
