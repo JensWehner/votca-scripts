@@ -210,7 +210,7 @@ class molecule:
             for i in self.atomlist:
                 i.pos=np.dot(R,i.pos) 
             self.shift(np.dot(R,i.pos))    
-       self.calccoG()
+        self.calccoG()
             
     def writexyz(self,filename,header=False):
         with open(filename,"w") as f:
@@ -328,14 +328,14 @@ class job:
         self.makefolder()
         self.createdimer(xyzfile,mpsfile=mpsfile)  
 
-    def createmonomer(self,infile):
+    def createmonomer(self,infile,outfile):
         mol1=molecule()
         mol1.readxyzfile(os.path.join(self.template,infile))
         if self.shift!=None:
             mol1.shift(self.shift)
         if self.rotation!=None:
             mol1.rotate(rotation)
-        mol1.writexyz(os.path.join(self.path,"molB.xyz"),header=True)      
+        mol1.writexyz(os.path.join(self.path,outfile),header=True)      
    
     def createdimer(self,infile,mpsfile=None):
         mol1=molecule()
@@ -404,16 +404,36 @@ class job:
             print "Running {} for {}".format(name,self.name)
             sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
 
-    def exciton(self):
+    def exciton(self,xyzfile):
         name="exciton"
+
+        shutil.copyfile(os.path.join(self.template,"gaussian_egwbse_molecule.xml"),os.path.join(self.path,"gaussian_egwbse_molecule.xml"))
+
+        if self.rotation!=None:
+                print "Molecules are rotated with respect to each other, starting monomer calculation"
+                self.createmonomer(xyzfile,"molB.xyz")
+                root=self.readoptionfile("exciton_single",calcname="exciton")
+                for entry in root.iter(name):
+                    entry.find("tasks").text="input,dft,parse,gwbse"
+                    entry.find("gwbse").text="mbgft_single.xml"
+                    entry.find("archive").text="molB.orb"
+                    molecule=entry.find("molecule")
+                    
+                    molecule.find("xyz").text="molB.xyz"
+                self.writeoptionfile(root,"exciton_single")
+                shutil.copyfile(os.path.join(self.template,"mbgft_single.xml"),os.path.join(self.path,"mbgft_single.xml"))
+                with cd(self.path):
+                    print "Running {} monomer for {}".format(name,self.name)
+                    sp.check_output("xtp_tools -e {0} -o {0}_single.xml > {0}_single.log".format(name),shell=True)
+        else:
+            print "Molecules are not rotated with respect to each other, just linking orb file"
+            sp.call("ln -s molA.orb molB.orb".format(self.template,self.path),shell=True)
+
         print "Setting up options for {} for {}".format(name,self.name)
         self.writeoptionfile(self.readoptionfile(name),name)
-        
         shutil.copyfile(os.path.join(self.template,"mbgft.xml"),os.path.join(self.path,"mbgft.xml"))
-        shutil.copyfile(os.path.join(self.template,"gaussian_egwbse_molecule.xml"),os.path.join(self.path,"gaussian_egwbse_molecule.xml"))
-        
         with cd(self.path):
-            print "Running {} for {}".format(name,self.name)
+            print "Running {} dimer for {}".format(name,self.name)
             sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
             
     def xcoupling(self):
@@ -423,12 +443,7 @@ class job:
         shutil.copyfile(os.path.join(self.template,"bsecoupling.xml"),os.path.join(self.path,"bsecoupling.xml"))
         shutil.copyfile(os.path.join(self.template,"system.orb"),os.path.join(self.path,"molA.orb"))
         with cd(self.path):
-            if self.rotation!=None:
-                print "Molecules are rotated with respect to each other, starting monomer calculation"
-                
-            else:
-                print "Molecules are not rotated with respect to each other, just linking orb file"
-                sp.call("ln -s molA.orb molB.orb".format(self.template,self.path),shell=True)
+            
             
             print "Running {} for {}".format(name,self.name)
             sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
@@ -444,7 +459,7 @@ for i,distance in enumerate(reversed(distances)):
         if args.clcpl:
             jobs.classicalcoupling()
         if args.exciton:
-            jobs.exciton()
+            jobs.exciton(args.xyz)
         if args.excpl:
             jobs.xcoupling()
         if args.qmcpl:
