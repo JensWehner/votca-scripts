@@ -45,6 +45,7 @@ def readoptionsfile(optionfile):
     root = tree.getroot()      
     distances=[]
     rotations=[]
+    states=np.array([15])
     for child in root:
         if child.tag=="distances":
             for distance in child:
@@ -54,10 +55,12 @@ def readoptionsfile(optionfile):
             for rotation in child:
                 temp=np.array((rotation.text).split(),dtype=float)
                 rotations.append(temp)
+        if child.tag=="states":
+            states=np.array((child.text).split(),dtype=int)
     if len(rotations)==0:
         rotations=[None]
     #print distances,rotations
-    return distances,rotations
+    return distances,rotations,states
 
 class cd:
     """Context manager for changing the current working directory"""
@@ -436,20 +439,36 @@ class job:
             print "Running {} dimer for {}".format(name,self.name)
             sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
             
-    def xcoupling(self):
+    def xcoupling(self,states):
         name="excitoncoupling"
         print "Setting up options for {} for {}".format(name,self.name)
-        self.writeoptionfile(self.readoptionfile(name),name)
-        shutil.copyfile(os.path.join(self.template,"bsecoupling.xml"),os.path.join(self.path,"bsecoupling.xml"))
         shutil.copyfile(os.path.join(self.template,"system.orb"),os.path.join(self.path,"molA.orb"))
-        with cd(self.path):
+        for state in states:
+            root=self.readoptionfile("bsecoupling")
+            bsefilename="bsecoupling_{}".format(state)
+            for entry in root.iter("bsecoupling"):
+                A=entry.find("moleculeA")
+                (A.find("occLevels")).text=str(state)
+                (A.find("unoccLevels")).text=str(state)
+                B=entry.find("moleculeB")
+                (B.find("occLevels")).text=str(state)
+                (B.find("unoccLevels")).text=str(state)
+            self.writeoptionfile(root,bsefilename)
+            root=self.readoptionfile(name)
+            optionfilename="{}_{}".format(name,state)
+            for entry in root.iter(name):
+                (entry.find("output")).text="excitoncoupling_{}.out.xml".format(state)
+                (entry.find("bsecoupling")).text=bsefilename+".xml" 
+            self.writeoptionfile(root,optionfilename)   
             
-            
-            print "Running {} for {}".format(name,self.name)
-            sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
+            with cd(self.path):
+                
+                
+                print "Running {} for {} with {} occ/unocc states for each molecule giving {} states".format(name,self.name,state,2*state**2)
+                sp.check_output("xtp_tools -e {0} -o {1}.xml > {1}.log".format(name,optionfilename),shell=True)
 
 template=args.template
-distances,rotations=readoptionsfile(args.option)
+distances,rotations,states=readoptionsfile(args.option)
 for i,distance in enumerate(reversed(distances)):
     for j,rotation in enumerate(rotations):
         print "{} Distance {} of {}\t Rotation {} of {}".format(time.strftime("%H:%M:%S",time.gmtime()),i+1,len(distances),j+1,len(rotations))
@@ -461,7 +480,7 @@ for i,distance in enumerate(reversed(distances)):
         if args.exciton:
             jobs.exciton(args.xyz)
         if args.excpl:
-            jobs.xcoupling()
+            jobs.xcoupling(states)
         if args.qmcpl:
             jobs.coupling()
 
