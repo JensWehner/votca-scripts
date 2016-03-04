@@ -359,7 +359,8 @@ class job:
         mol=molecule()
         mol.readmps(os.path.join(self.template,mpsin))
         mol.shift(self.shift)
-        mol.rotate(self.rotation)
+        if self.rotation!=None:
+            mol.rotate(self.rotation)
         mol.writemps(os.path.join(self.path,mpsout)) 
 
     def readoptionfile(self,name,calcname=None):
