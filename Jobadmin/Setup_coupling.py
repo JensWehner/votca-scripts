@@ -28,7 +28,6 @@ parser.add_argument("--xyz",type=str,help="Name of the xyz file for the molecule
 parser.add_argument("--mps",type=str,default="",help="Name of the mps file for the molecule")
 parser.add_argument("--option","-o",type=str,required=True,help="Optionfile")
 parser.add_argument("--setup", action='store_const', const=1, default=0,help="Setup folders")
-parser.add_argument("--classicalcoupling", action='store_const', const=1, default=0,help="Run classical coupling")
 parser.add_argument("--exciton", action='store_const', const=1, default=0,help="Run exciton calc")
 parser.add_argument("--excpl", action='store_const', const=1, default=0,help="Run exciton coupling")
 parser.add_argument("--qmcpl", action='store_const', const=1, default=0,help="Run e/h coupling")
@@ -141,9 +140,9 @@ class molecule:
 
     def __add__(self,other):
         atomlist=[]
-        for i in other.atomlist:
-            atomlist.append(i)
         for i in self.atomlist:
+            atomlist.append(i)
+        for i in other.atomlist:
             atomlist.append(i)
         newMol=molecule()
         newMol.atomlist=atomlist
@@ -399,11 +398,10 @@ class job:
         
         self.writeoptionfile(self.readoptionfile(name),name)
         with cd(self.path):
-            sp.call("ln -s molA.log molB.log".format(self.template,self.path),shell=True)
-            sp.call("ln -s molA.fort molB.fort".format(self.template,self.path),shell=True)
-            sp.call("ln -s fort.7 system.fort".format(self.template,self.path),shell=True)
-            
-
+            if not self.rotation!=None:
+                sp.call("ln -s molA.log molB.log",shell=True)
+                sp.call("ln -s molA.fort molB.fort",shell=True)
+            sp.call("ln -s fort.7 system.fort",shell=True)
             print "Running {} for {}".format(name,self.name)
             sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
 
@@ -428,6 +426,8 @@ class job:
                 with cd(self.path):
                     print "Running {} monomer for {}".format(name,self.name)
                     sp.check_output("xtp_tools -e {0} -o {0}_single.xml > {0}_single.log".format(name),shell=True)
+                    sp.check_output("mv system.log molB.log".format(name),shell=True)
+                    sp.check_output("mv fort.7 molB.fort".format(name),shell=True)                    
         else:
             print "Molecules are not rotated with respect to each other, just linking orb file"
             sp.call("ln -s molA.orb molB.orb".format(self.template,self.path),shell=True)
@@ -459,6 +459,8 @@ class job:
             for entry in root.iter(name):
                 (entry.find("output")).text="excitoncoupling_{}.out.xml".format(state)
                 (entry.find("bsecoupling")).text=bsefilename+".xml" 
+                (entry.find("orbitalsA")).text="molA.orb"
+                (entry.find("orbitalsB")).text="molB.orb"
             self.writeoptionfile(root,optionfilename)   
             
             with cd(self.path):
