@@ -398,7 +398,7 @@ class job:
         
         self.writeoptionfile(self.readoptionfile(name),name)
         with cd(self.path):
-            if not self.rotation!=None:
+            if self.rotation is None: 
                 sp.call("ln -s molA.log molB.log",shell=True)
                 sp.call("ln -s molA.fort molB.fort",shell=True)
             sp.call("ln -s fort.7 system.fort",shell=True)
