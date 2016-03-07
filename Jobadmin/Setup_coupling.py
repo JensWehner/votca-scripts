@@ -430,8 +430,9 @@ class job:
                     sp.check_output("mv system.log molB.log".format(name),shell=True)
                     sp.check_output("mv fort.7 molB.fort".format(name),shell=True)                    
         else:
-            print "Molecules are not rotated with respect to each other, just linking orb file"
-            sp.call("ln -s molA.orb molB.orb".format(self.template,self.path),shell=True)
+            with cd(self.path):
+                print "Molecules are not rotated with respect to each other, just linking orb file"
+                sp.call("ln -s molA.orb molB.orb".format(self.template,self.path),shell=True)
 
         print "Setting up options for {} for {}".format(name,self.name)
         self.writeoptionfile(self.readoptionfile(name),name)
