@@ -7,4 +7,7 @@ lxml
 numpy 
 scipy
 matplotlib
+sqlite3
 MD Analysis http://www.mdanalysis.org/
+
+This library was created by Jens Wehner and Carl Poelking
