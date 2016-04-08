@@ -10,7 +10,7 @@ import sys
 import numpy.linalg as lg
 import lxml.etree as lxml
 import argparse as ap
-from ctp__cluster__ import *
+from __cluster__ import *
 
 
 

@@ -4,7 +4,7 @@ import lxml.etree as lxml
 import argparse as ap
 import os
 
-pythonpaths=["lib"]
+pythonpaths=["lib","lib/cluster","lib/xtp"]
 paths=["xtp","Gaussian","Gromacs","Jobadmin"]
 
 parser=ap.ArgumentParser(description="Adds required paths to PYTHONPATH and PATH in the .bashrc file")
