@@ -213,7 +213,18 @@ class votcafolder(object):
                 print "Running egwbse to write jobfile {} for {}".format(jobfile,self.name)
                 sp.check_output("xtp_parallel -e {} -o OPTIONFILES/{}.xml -f {} -j write -s 0 > egwbse.log".format(name,name,os.path.basename(self.sql)),shell=True)
 
-        if args.read:
+        elif args.local:
+             elif args.local:
+   
+            name="egwbselocal"
+            calcname="ewald"
+            self.writeoptionfile(self.readoptionfile(name,calcname=calcname),name)
+            with cd(self.path):
+                print "Running egwbse locally for {}".format(self.name)
+                sp.call("xtp_parallel -e gwbse -o OPTIONFILES/{}.xml -f {} -s 0 -t 1 -c 4 > egwbselocal.log".format(name,os.path.basename(self.sql)),shell=True)
+
+
+        elif args.read:
             name="egwbse"
             jobfile="egwbse.jobs"
             with cd(self.path):
