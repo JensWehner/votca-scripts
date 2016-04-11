@@ -11,10 +11,10 @@ import argparse
 import lxml.etree as lxml
 import numpy.linalg as lg
 import time
-from tools import MyParser
-from tools import cd
-from xtpAtom import atom
-from xtpMolecule import molecule
+from __tools__ import MyParser
+from __tools__ import cd
+from __xtpAtom__ import atom
+from __xtpMolecule__ import molecule
 
 
 

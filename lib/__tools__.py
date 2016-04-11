@@ -2,12 +2,13 @@ import lxml.etree as lxml
 import argparse 
 import sys
 import sqlite3
+import os
 
 def XmlParser(optionfile,entry=False):
     parser=lxml.XMLParser(remove_comments=True)
     tree = lxml.parse(optionfile,parser)
     root = tree.getroot() 
-    if entry not False:
+    if entry != False:
         return root.find(entry)
     else:
         return root

@@ -8,11 +8,11 @@ import shutil
 import re
 import argparse 
 import lxml.etree as lxml
-from tools import MyParser
-from tools import cd
-from tools import query_yes_no
-from xtpAtom import atom
-from xtpMolecule import molecule
+from __tools__ import MyParser
+from __tools__ import cd
+from __tools__ import query_yes_no
+from __xtpAtom__ import atom
+from __xtpMolecule__ import molecule
 
 
 
