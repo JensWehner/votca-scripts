@@ -93,7 +93,7 @@ class job(object):
         print "Running job {}".format(self.identifier)
         oldpath=os.path.realpath('.')
         os.chdir(self.path)
-        sp.call("ctp_tools -e exciton -o exciton.xml > exciton.log",shell=True)
+        sp.call("xtp_tools -e exciton -o exciton.xml > exciton.log",shell=True)
         os.chdir(oldpath)
 
     def readlogfiledft(self):

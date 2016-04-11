@@ -6,7 +6,7 @@ QUEUE_MAIL = ['%s@mpip-mainz.mpg.de' % getpass.getuser(),'a'] # eab
 def write_cluster_batch(
     command, 
     tag, 
-    outfile = 'ctp_batch.sh', 
+    outfile = 'xtp_batch.sh', 
     username = getpass.getuser(), 
     queue = 'PE_8', 
     procs = 8,
@@ -95,8 +95,8 @@ def write_cluster_batch(
 def multi_write_cluster_batch(
     n, 
     command, 
-    tag = 'VOTCA_CTP_{ID:02d}', 
-    outfile = 'ctp_batch_{ID:02d}.sh', 
+    tag = 'VOTCA_XTP_{ID:02d}', 
+    outfile = 'xtp_batch_{ID:02d}.sh', 
     username = getpass.getuser(), 
     queue = 'PE_8', 
     procs = 8,
@@ -122,7 +122,7 @@ def multi_write_cluster_batch(
         outfile_i = outfile.format(ID=batch_id)
         outlog_i = tag_i.lower()+".std"
         errlog_i = tag_i.lower()+".err"
-        print "CTP batch script '{batch}'\n  o cmd='{cmd}'\n  o tag='{tag}'".format(batch=outfile_i, cmd=cmd_i, tag=tag_i)
+        print "XTP batch script '{batch}'\n  o cmd='{cmd}'\n  o tag='{tag}'".format(batch=outfile_i, cmd=cmd_i, tag=tag_i)
         write_cluster_batch(cmd_i, tag_i, outfile_i, username, queue, procs, outlog_i, errlog_i, votcarc=votcarc, source=source,module=module,rsync=rsync)
         list_sh.append(outfile_i)
     return list_sh
