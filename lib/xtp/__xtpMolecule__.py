@@ -1,5 +1,6 @@
 import numpy as np
 import numpy.linalg as lg
+import copy 
 from __xtpAtom__ import atom
 class molecule:
     def __init__(self):
