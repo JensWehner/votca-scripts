@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.linalg as lg
-
+from __xtpAtom__ import atom
 class molecule:
     def __init__(self):
         self.pos=np.array([0,0,0])
