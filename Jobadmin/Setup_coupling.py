@@ -58,14 +58,7 @@ def readoptionsfile(optionfile):
     #print distances,rotations
     return distances,rotations,states
 
-
-
-
-
-    
-
-
-                    
+               
 
 class job:
     
@@ -80,10 +73,11 @@ class job:
         self.setname(self.name+temp)
         self.template=os.path.abspath(template)
         self.shift=shift
-        if rotation[-1]==0:
-            self.rotation=None
-        else:
-            self.rotation=rotation
+        if rotation!=None:
+            if rotation[-1]==0:
+                self.rotation=None
+            else:
+                self.rotation=rotation
 
     def setname(self,name):
         self.name=name
