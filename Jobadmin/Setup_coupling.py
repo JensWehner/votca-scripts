@@ -20,7 +20,7 @@ from __xtpMolecule__ import molecule
 
 parser=MyParser(description="Environment to check coupling constants")
 
-parser.add_argument("--template",type=str,required=True,help="Folder, from which to take optionfiles from and where the exciton tool had been executed for one molecule")
+parser.add_argument("--template","-t",type=str,required=True,help="Folder, from which to take optionfiles from and where the exciton tool had been executed for one molecule")
 parser.add_argument("--xyz",type=str,help="Name of the xyz file for the molecule")
 parser.add_argument("--mps",type=str,default="",help="Name of the mps file for the molecule")
 parser.add_argument("--option","-o",type=str,required=True,help="Optionfile")
