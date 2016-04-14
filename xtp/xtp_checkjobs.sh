@@ -3,7 +3,7 @@
 
 Available=$(cat $1 | grep "AVAILABLE" | wc -l)
 Assigned=$(cat $1 | grep "ASSIGNED" | wc -l)
-Complete=$(cat $1 | grep "COMPELTE" | wc -l)
+Complete=$(cat $1 | grep "COMPLETE" | wc -l)
 Failed=$(cat $1 | grep "FAILED" | wc -l)
 
 Total=$((Available + Assigned + Complete + Failed ))
