@@ -13,6 +13,7 @@ parser=MyParser(description="Environment to split a jobfile into many and submit
 parser.add_argument("--options",type=str,required=True,help="optionfile")
 parser.add_argument("--submit",action='store_const', const=1, default=0,help="Submit to cluster")
 parser.add_argument("--setup",action='store_const', const=1, default=0,help="Setup")
+parser.add_argument("--merge",action='store_const', const=1, default=0,help="Merge jobfiles")
 args=parser.parse_args()
 
 root=XmlParser(args.options)
@@ -53,6 +54,7 @@ for i in range(numberofjobs):
     tags.append("{}_{}".format(tag,i))
 
 if args.setup:
+    print "Setting up directory {}".format(workdir)
     make_sure_path_exists(workdir)
     splittjobfile(jobfile,jobfiles)
     for optfile,jfile,subfile,logfile,tag in zip(optionfiles,jobfiles,submitfiles,logfiles,tags):
@@ -66,6 +68,9 @@ if args.setup:
 if args.submit:
     for submitfile in submitfiles:
         sp.call("qsub {}".format(submitfile),shell=True) 
+
+if args.merge:
+    mergejobfiles(jobfiles,jobfile)
 
     
 
