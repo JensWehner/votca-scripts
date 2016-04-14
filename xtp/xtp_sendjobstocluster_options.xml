@@ -1,0 +1,15 @@
+<options>
+
+<queue>PE_8<queue>
+<procs>8</procs>
+<tag>Alg3</tag>
+<jobfile>egwbse.jobs</jobfile>
+<calculator>egwbse.jobs</calculator>
+<optfile>OPTIONFILES/egwbse.xml</optfile>
+<sqlfile>system.sql</sqlfile>
+<threads>4</threads>
+<cache>16</cache>
+<rsync>0</rsync>
+<clusterjobs>40</clusterjobs>
+<workdir>EGWBSE</workdir>
+</options>
