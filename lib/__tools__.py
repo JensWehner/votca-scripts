@@ -13,6 +13,10 @@ def XmlParser(optionfile,entry=False):
     else:
         return root
 
+def XmlWriter(root,filename):
+    with open(filename, 'w') as f:
+            f.write(lxml.tostring(root, pretty_print=True))
+
 def SQLParser(sqlname,sqlstatement):
         con = sqlite3.connect(sqlname)
         with con:
@@ -30,7 +34,13 @@ def make_sure_path_exists(path):
         if exception.errno != errno.EEXIST:
             raise
 
-
+def addsuffixtofile(filename,suffix):
+    filename=os.path.basename(filename)
+    temp=os.path.splitext(filename)
+    extension=temp[1]
+    name=temp[0]
+    path="{}_{}{}".format(name,suffix,extension))
+    return path
 
 
 def RepresentsInt(s):

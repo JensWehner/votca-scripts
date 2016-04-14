@@ -164,7 +164,7 @@ class votcafolder(object):
                 shutil.copyfile(os.path.join(self.template,"OPTIONFILES/"+gwbseoptions),self.optfiles)
                 entry.find("job_file").text=os.path.join(self.path,jobfile)
                 try:
-                    espoptions=entry.find("esp").text
+                    espoptions=entry.find("esp_options").text
                     shutil.copyfile(os.path.join(self.template,"OPTIONFILES/"+espoptions),self.optfiles)
                 except:
                     print "Running without espfits"

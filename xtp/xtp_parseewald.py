@@ -29,7 +29,7 @@ if "s" in args.type:
     allowedstates.append(2)
 if "t" in args.type:
     allowedstates.append(3)
-print "Running ctp_parseewald"
+print "Running xtp_parseewald"
 print "Parsing files:\n{} \nfor states:{}\nmode: {}".format("\t\n".join(args.jobfile)," ".join(args.type),args.mode)
 
 

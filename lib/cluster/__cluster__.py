@@ -15,6 +15,7 @@ def write_cluster_batch(
     votcarc = None,
     source = None,
     module= None,
+    execdir=None,
     rsync=None):
 
    
@@ -38,7 +39,7 @@ def write_cluster_batch(
     ofs.write('#$ -N %s\n' % tag)
     ofs.write('\n')
     # SOURCE LOCATIONS
-    if source != None and module==None:
+    if source != None:
         if type(source) == str:
 			ofs.write('source %s\n' % source)
         elif source!=False:
@@ -47,14 +48,14 @@ def write_cluster_batch(
     if module !=None:
         ofs.write('source /etc/profile.d/modules.csh\n')
         ofs.write('setenv MODULEPATH "/sw/linux/modules/modulefiles/"\n')
-        ofs.write('module use -a "/people/thnfs/homes/wehnerj/privatemodules"\n')
+        ofs.write('module use -a "/people/thnfs/homes/{}/privatemodules"\n'.format(username))
         if type(module) == str:
 			ofs.write('module load %s\n' % module)
         else:
             for s in module:
                 ofs.write('module load %s\n' % s)
 	# SOURCE VOTCA
-    if source!=False:
+    if source!=False and votcarc!=None:
         ofs.write('source %s\n\n' % votcarc)
 	# BASE DIRECTORY
     ofs.write('# BASE DIRECTORY\n')
@@ -63,30 +64,34 @@ def write_cluster_batch(
     ofs.write('    mkdir /usr/scratch/%s\n' % username)
     ofs.write('endif\n\n')
     # JOB DIRECTORY
-    ofs.write('# JOB DIRECTORY\n')
-    ofs.write('set jno=0\n')
-    ofs.write('while ( -d /usr/scratch/%s/job_$jno )\n' % username  )
-    ofs.write('    set jno = `expr $jno + 1`\n')
-    ofs.write('end\n')	
-    ofs.write('set jobdir="/usr/scratch/%s/job_$jno"\n' % username)
-    ofs.write('mkdir -p $jobdir\n')
-    ofs.write('rm -rf $jobdir/*\n')
-    if rsync==None:
-        ofs.write('rsync -ar $basedir/* $jobdir\n\n')
-    else:
-        ofs.write('rsync -ar $basedir/{} $jobdir\n\n'.format(rsync))
-    # EXECUTE HEAVY STUFF
-    ofs.write('# EXECUTE HEAVY STUFF\n')	
-    ofs.write('cd $jobdir\n')
+    if rsync!=False:
+        ofs.write('# JOB DIRECTORY\n')
+        ofs.write('set jno=0\n')
+        ofs.write('while ( -d /usr/scratch/%s/job_$jno )\n' % username  )
+        ofs.write('    set jno = `expr $jno + 1`\n')
+        ofs.write('end\n')	
+        ofs.write('set jobdir="/usr/scratch/%s/job_$jno"\n' % username)
+        ofs.write('mkdir -p $jobdir\n')
+        ofs.write('rm -rf $jobdir/*\n')
+        if rsync==None:
+            ofs.write('rsync -ar $basedir/* $jobdir\n\n')
+        else:
+            ofs.write('rsync -ar $basedir/{} $jobdir\n\n'.format(rsync))
+        # EXECUTE HEAVY STUFF
+        ofs.write('# EXECUTE HEAVY STUFF\n')	
+        ofs.write('cd $jobdir\n')
+    if execdir!=None:
+        ofs.write('cd {}\n'.format(execdir))
     if type(command) == str:
         ofs.write('%s\n' % command)
     else:
         for c in command:
             ofs.write('%s\n' % c)
-    ofs.write('cd ..\n\n')
-    # SYNC BACK
-    ofs.write('# SYNC BACK\n')
-    ofs.write('rsync -au $jobdir/* $basedir\n')
+    if rsync!=False:
+        ofs.write('cd ..\n\n')
+        # SYNC BACK
+        ofs.write('# SYNC BACK\n')
+        ofs.write('rsync -au $jobdir/* $basedir\n')
     ofs.write('rm -rf $jobdir\n')
     ofs.close()
     return outfile
