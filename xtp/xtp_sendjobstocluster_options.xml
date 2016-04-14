@@ -1,6 +1,6 @@
 <options>
 
-<queue>PE_8<queue>
+<queue>PE_8</queue>
 <procs>8</procs>
 <tag>Alg3</tag>
 <jobfile>egwbse.jobs</jobfile>

@@ -39,7 +39,7 @@ def addsuffixtofile(filename,suffix):
     temp=os.path.splitext(filename)
     extension=temp[1]
     name=temp[0]
-    path="{}_{}{}".format(name,suffix,extension))
+    path="{}_{}{}".format(name,suffix,extension)
     return path
 
 

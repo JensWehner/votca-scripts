@@ -18,18 +18,18 @@ args=parser.parse_args()
 root=XmlParser(args.options)
 
 
-queue=root.find("queue")
-procs=root.find("procs")
-tag=root.find("tag")
-jobfile=root.find("jobfile")
-calculator=root.find("calculator")
-optionfile=root.find("optfile")
-sql=root.find("sqlfile")
-threads=int(root.find("threads"))
-cache=int(root.find("cache"))
-rsync=bool(root.find("copyfiles"))
-numberofjobs=int(root.find("clusterjobs")
-workdir=root.find("workdir")
+queue=root.find("queue").text
+procs=root.find("procs").text
+tag=root.find("tag").text
+jobfile=root.find("jobfile").text
+calculator=root.find("calculator").text
+optionfile=root.find("optfile").text
+sql=root.find("sqlfile").text
+threads=int(root.find("threads").text)
+cache=int(root.find("cache").text)
+rsync=bool(root.find("rsync").text)
+numberofjobs=int(root.find("clusterjobs").text)
+workdir=root.find("workdir").text
 
 options=XmlParser(optionfile,entry=calculator)
 
@@ -50,7 +50,7 @@ for i in range(numberofjobs):
     optionfiles.append(os.path.join(workdir,addsuffixtofile(optionfile,i)))
     submitfiles.append(os.path.join(workdir,"xtp_batch_{}.sh".format(i)))
     logfiles.append(os.path.join(workdir,"log_bathc_{}.txt".format(i)))
-    tags.append("{}_{}".format(tag,i)
+    tags.append("{}_{}".format(tag,i))
 
 if args.setup:
     make_sure_path_exists(workdir)
