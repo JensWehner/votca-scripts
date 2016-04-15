@@ -92,7 +92,7 @@ def write_cluster_batch(
         # SYNC BACK
         ofs.write('# SYNC BACK\n')
         ofs.write('rsync -au $jobdir/* $basedir\n')
-    ofs.write('rm -rf $jobdir\n')
+        ofs.write('rm -rf $jobdir\n')
     ofs.close()
     return outfile
 

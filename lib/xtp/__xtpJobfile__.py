@@ -21,7 +21,7 @@ def splittjobfile(jobfile,jobfiles,ignorejobsidentifier=False):
             ignorejobsidentifier=[ignorejobsidentifier]
         print "which are not of type:{}".format(" ".join(ignorejobsidentifier))
         print "Ignored jobs: {}".format(ignoredjobs)
-    numberofflies=len(jobfiles)
+    numberoffiles=len(jobfiles)
     jobsperfile=numberofjobs/numberoffiles
     remaining=numberofjobs%numberoffiles
     jobsperfilelist=[]
@@ -42,7 +42,6 @@ def splittjobfile(jobfile,jobfiles,ignorejobsidentifier=False):
             j=1
         j+=1
         roots[i].append(entry)
-    print jobsperfilelist
     print "Split up jobfile into {} files with".format(numberoffiles)
     print "with: {} jobs each".format(" ".join(map(str,jobsperfilelist)))
     for outputfile,root in zip(jobfiles,roots):
@@ -79,4 +78,27 @@ def mergejobfiles(jobfiles,outputfile,checkids=False,ignorejobsidentifier=False)
             print "Ignored jobs: {}".format(ignoredjobs)
     XmlWriter(root,outputfile)
     
-            
+def infojobfile(jobfile):
+   
+    complete=0
+    available=0
+    assigned=0
+    failed=0
+    root=XmlParser(jobfile)
+    for entry in root.iter('job'):
+        status=entry.find("status").text
+        if status=="ASSIGNED":
+            assigned+=1
+        elif status=="AVAILABLE":
+            available+=1
+        elif status=="COMPLETE":
+            complete+=1
+        elif status=="FAILED":
+            failed+=1
+        else:
+            jobid=entry.find("id").text
+            print "WARNING: Job status {} for job id:{} in file {} not known".format(status,jobid,jobfile)
+        total=complete+available+assigned+failed
+    return total,complete,available,assigned,failed
+                  
+                      

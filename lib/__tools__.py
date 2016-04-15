@@ -3,6 +3,7 @@ import argparse
 import sys
 import sqlite3
 import os
+import errno
 
 def XmlParser(optionfile,entry=False):
     parser=lxml.XMLParser(remove_comments=True)
