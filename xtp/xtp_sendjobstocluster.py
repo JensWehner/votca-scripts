@@ -8,10 +8,11 @@ from __cluster__ import write_cluster_batch
 from __xtpJobfile__ import splittjobfile
 from __xtpJobfile__ import mergejobfiles
 from __xtpJobfile__ import infojobfile
-
+from __xtpJobfile__ import resetjobfile
 import lxml.etree as lxml
 import subprocess as sp
 import os
+import sys
 
 parser=MyParser(description="Environment to split a jobfile into many and submit to cluster")
 parser.add_argument("--options","-o",type=str,required=True,help="optionfile")
@@ -19,8 +20,14 @@ parser.add_argument("--submit",action='store_const', const=1, default=0,help="Su
 parser.add_argument("--setup",action='store_const', const=1, default=0,help="Setup")
 parser.add_argument("--merge",action='store_const', const=1, default=0,help="Merge jobfiles")
 parser.add_argument("--info",action='store_const', const=1, default=0,help="Display info about each jobfile")
-
+parser.add_argument("--reset",type=str, nargs="+",default=False,help="Reset FAILED and or ASSIGNED to AVAILABLE")
+parser.add_argument("--exclude",type=int, nargs="+", default=False,help="Exclude certain jobs from action,give the numbers of the jobs")
+parser.add_argument("--include",type=int, nargs="+", default=False,help="Limit action to only the jobs, give the  numbers of the jobs")
 args=parser.parse_args()
+
+if args.exclude!=False and args.include!=False:
+    print "ERROR: Excluding and Including at the same time does not work. Choose different options!"
+    sys.exit()
 
 root=XmlParser(args.options)
 
@@ -48,11 +55,26 @@ tags=[]
 currentdir=os.getcwd()
 workdir=os.path.join(currentdir,workdir)
 
+rangejobs=range(numberofjobs)
+if args.include!=False:
+	rangejobs=args.include
+	print "Only working on jobs {}".format(" ".join(map(str,rangejobs)))
+
+if args.exclude!=False:
+    temp=[]
+    for i in rangejobs:
+        if i in args.exclude:
+            print "Skipping job {}".format(i)
+            continue
+        else:
+            temp.append(i)
+	rangejobs=temp
 
 
 
-for i in range(numberofjobs):
-        
+
+for i in rangejobs:
+	
     jobfiles.append(os.path.join(workdir,addsuffixtofile(jobfile,i)))
     optionfiles.append(os.path.join(workdir,addsuffixtofile(optionfile,i)))
     submitfiles.append(os.path.join(workdir,"xtp_batch_{}.sh".format(i)))
@@ -63,7 +85,7 @@ if args.setup:
     print "Setting up directory {}".format(workdir)
     make_sure_path_exists(workdir)
     splittjobfile(jobfile,jobfiles)
-    for i,(optfile,jfile,subfile,logfile,tag) in enumerate(zip(optionfiles,jobfiles,submitfiles,logfiles,tags)):
+    for i,optfile,jfile,subfile,logfile,tag in zip(rangejobs,optionfiles,jobfiles,submitfiles,logfiles,tags):
         root=lxml.Element("options")
         options.find("job_file").text=jfile
         root.append(options)
@@ -96,3 +118,14 @@ if args.info:
         print  "{:^18}|{:^12}|{:^12}|{:^12}|{:^12}|{:^12}".format(os.path.basename(jobfile),t,c,ava,ass,f)
     print '-' * 83
     print  "{:^18}|{:^12}|{:^12}|{:^12}|{:^12}|{:^12}".format("SUM",total,complete,available,assigned,failed)
+
+
+if args.reset!=False:
+    failed=False
+    assigned=False
+    if "FAILED" in args.reset:
+        failed=True
+    if "ASSIGNED" in args.reset:
+        assigned=True
+    for jobfile in jobfiles:
+        resetjobfile(jobfile,failed=failed,assigned=assigned)

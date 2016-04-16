@@ -101,4 +101,23 @@ def infojobfile(jobfile):
         total=complete+available+assigned+failed
     return total,complete,available,assigned,failed
                   
-                      
+def resetjobfile(jobfile,assigned=True,failed=True):
+    root=XmlParser(jobfile)
+    piece=""
+    if assigned and failed:
+        piece="ASSIGNED and FAILED"
+    elif assigned:
+        piece="ASSIGNED"
+    elif failed:
+        piece="FAILED"
+    else:
+        piece="No Entry"
+    print "Resetting for file {}: {} to AVAILABLE".format(jobfile,piece)
+    for entry in root.iter('job'):
+        status=entry.find("status").text
+       	if assigned==True and status=="ASSIGNED":
+            entry.find("status").text="AVAILABLE"
+        elif failed==True and status=="FAILED":
+			entry.find("status").text="AVAILABLE"
+
+    XmlWriter(root,jobfile)
