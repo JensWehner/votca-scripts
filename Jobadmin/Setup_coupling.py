@@ -13,6 +13,7 @@ import numpy.linalg as lg
 import time
 from __tools__ import MyParser
 from __tools__ import cd
+from __tools__ import XmlParser
 from __xtpAtom__ import atom
 from __xtpMolecule__ import molecule
 
@@ -130,9 +131,19 @@ class job:
         parser=lxml.XMLParser(remove_comments=True)
         tree = lxml.parse(templatefile,parser)
         root = tree.getroot()      
-        for i in root:
-            if i.tag!=calcname:
-                root.remove(i)  
+        if name!=None:
+            for i in root:
+                if i.tag!=calcname:
+                    root.remove(i)  
+        return root
+
+    def readpackagefile(self,name,packagename=None):
+        if packagename==None:
+            packagename=name
+        templatefile=os.path.join(self.template,name+".xml")
+        parser=lxml.XMLParser(remove_comments=True)
+        tree = lxml.parse(templatefile,parser)
+        root = tree.getroot()      
         return root
 
 
@@ -206,21 +217,20 @@ class job:
         print "Setting up options for {} for {}".format(name,self.name)
         shutil.copyfile(os.path.join(self.template,"system.orb"),os.path.join(self.path,"molA.orb"))
         for state in states:
-            root=self.readoptionfile("bsecoupling")
+            root=self.readpackagefile("bsecoupling")
             bsefilename="bsecoupling_{}".format(state)
-            for entry in root.iter("bsecoupling"):
-                A=entry.find("moleculeA")
-                (A.find("occLevels")).text=str(state)
-                (A.find("unoccLevels")).text=str(state)
-                B=entry.find("moleculeB")
-                (B.find("occLevels")).text=str(state)
-                (B.find("unoccLevels")).text=str(state)
+            A=root.find("moleculeA")
+            (A.find("occLevels")).text=str(state)
+            (A.find("unoccLevels")).text=str(state)
+            B=root.find("moleculeB")
+            (B.find("occLevels")).text=str(state)
+            (B.find("unoccLevels")).text=str(state)
             self.writeoptionfile(root,bsefilename)
             root=self.readoptionfile(name)
             optionfilename="{}_{}".format(name,state)
             for entry in root.iter(name):
                 (entry.find("output")).text="excitoncoupling_{}.out.xml".format(state)
-                (entry.find("bsecoupling")).text=bsefilename+".xml" 
+                (entry.find("bsecoupling_options")).text=bsefilename+".xml" 
                 (entry.find("orbitalsA")).text="molA.orb"
                 (entry.find("orbitalsB")).text="molB.orb"
             self.writeoptionfile(root,optionfilename)   
