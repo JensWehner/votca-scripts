@@ -12,6 +12,7 @@ from __tools__ import MyParser
 from __tools__ import make_sure_path_exists
 from __tools__ import XmlParser
 from __tools__ import cd
+from __exciton__ import readexcitonlogfile
 
 
 parser=MyParser(description="Enviroment to do numerical polarisation calculations with gwbse and gaussian")
@@ -154,19 +155,28 @@ class job(object):
         self.energy+=self.energydft
         print "DFT ",self.energydft, self.identifier
 
-    def readlogfilebse(self):
+    def readlogfilebse(self,tag):
         logfile=os.path.join(self.path,"exciton.log")
-        check=False
-        with open(logfile,"r") as f:
-            lines=f.readlines()
-            for line in lines:
-                if "====== singlet energies (eV) ======" in line:
-                    check=True
-                elif check==True and len(line.split())>5 and line.split()[4]==str(s):
-                    self.energybse=float(line.split()[7])/27.211385
-                    print "BSE ",self.energybse, self.identifier
-                    self.energy+=self.energybse
-                    print "Total",self.energy, self.identifier
+        singlets=False
+        triplets=False
+        state=None
+        if "s"==tag[0]:
+            singlets=True
+        elif "t"==tag[0]:
+            triplets=True
+        else:
+            print "Error: Tag {} not known. Exiting..".format(tag)
+            sys.exit()
+        if RepresentsInt(tag[1:]):
+            state=int(tag[1:])
+        results=readexcitonlogfile(logfile,dft=True,singlets=singlets,triplets=triplets)
+        if singlets:
+            self.energybse=float(results[5][state-1])/27.211385
+        elif triplets:
+            self.energybse=float(results[6][state-1])/27.211385
+        print "BSE ",self.energybse,tag, self.identifier
+        self.energy+=self.energybse
+        print "Total ",self.energy, tag, self.identifier
  
    
 
@@ -230,7 +240,7 @@ class Polarisation(object):
     def writelogfile(self,filename):
         BohrtoAngstroem=0.5291772109
         b2a3=BohrtoAngstroem**3
-        with open("polarisation.log","w") as f:
+        with open(filename,"w") as f:
             f.write("\nDiag Polarisation Tensor of state singlet {} with field {} au in Angstroem**3 \n".format(s,h))
             f.write(np.array_str(b2a3*self.diagpol))  
 
@@ -292,8 +302,9 @@ if args.setup:
 if args.run:
     test.runjobs()
 if args.read:
-    test.readlogs()
-    test.calcpolarisationdft()
-    test.calcpolarisation()
-test.writelogfile("polarisation.log")
+    for tag in tags:
+        test.readlogs()
+        test.calcpolarisationdft()
+        test.calcpolarisation()
+        test.writelogfile("polarisation_{}.log".format(tag))
 
