@@ -29,7 +29,7 @@ if filetype=="jobs":
 		for segment in inputs:
 			segid=segment.get('id')
 			segtype=segment.get('type')
-			mpsfile=os.path.join(args.path,"{}_{}_{}.mps".format(segtype,args.suffix,segid))
+			mpsfile=os.path.join(args.path,"{}_{}_{}.mps".format(segtype,segid,args.suffix))
 			segment.set('mps_file',mpsfile)
 
 	with open(args.jobfile, 'w') as f:
@@ -47,7 +47,7 @@ elif filetype=="xml":
 		name=tags[1]
 		state=tags[2]
 		if state==args.state:
-			mpsfile=os.path.join(args.path,"{}_{}_{}.mps".format(name,args.suffix,segid))
+			mpsfile=os.path.join(args.path,"{}_{}_{}.mps".format(name,segid,args.suffix))
 			mpsfile="{}:{}:{}".format(segid,name,mpsfile)
 			inputs.text=mpsfile
 
@@ -65,7 +65,7 @@ elif filetype=="tab":
 				entries=line.split()
 				segid=int(entries[0])
 				segtype=entries[1]
-				line="{} {} {} {} {}\n".format(segid,segtype,os.path.join(args.path,"{}_{}_{}.mps".format(segtype,args.suffix,segid)),entries[3],entries[4])
+				line="{} {} {} {} {}\n".format(segid,segtype,os.path.join(args.path,"{}_{}_{}.mps".format(segtype,segid,args.suffix)),entries[3],entries[4])
 				content.append(line)
 
 	with open(args.jobfile,'w') as f:

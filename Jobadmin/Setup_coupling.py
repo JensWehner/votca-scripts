@@ -93,13 +93,16 @@ class job:
 
     def createmonomer(self,infile,outfile):
         mol1=molecule()
+        print infile
         mol1.readxyzfile(os.path.join(self.template,infile))
         if self.shift!=None:
             mol1.shift(self.shift)
         if self.rotation!=None:
             mol1.rotate(rotation)
+       
         mol1.writexyz(os.path.join(self.path,outfile),header=True)      
-   
+		  
+ 
     def createdimer(self,infile,mpsfile=None):
         mol1=molecule()
         mol1.readxyzfile(os.path.join(self.template,infile))
@@ -188,7 +191,7 @@ class job:
                 root=self.readoptionfile("exciton_single",calcname="exciton")
                 for entry in root.iter(name):
                     entry.find("tasks").text="input,dft,parse,gwbse"
-                    entry.find("gwbse").text="mbgft_single.xml"
+                    entry.find("gwbse_options").text="mbgft_single.xml"
                     entry.find("archive").text="molB.orb"
                     molecule=entry.find("molecule")
                     
