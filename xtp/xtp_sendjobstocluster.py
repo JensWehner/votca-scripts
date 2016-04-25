@@ -13,6 +13,7 @@ import lxml.etree as lxml
 import subprocess as sp
 import os
 import sys
+from __tools__ import cd
 
 parser=MyParser(description="Environment to split a jobfile into many and submit to cluster")
 parser.add_argument("--options","-o",type=str,required=True,help="optionfile")
@@ -95,7 +96,8 @@ if args.setup:
 
 if args.submit:
     for submitfile in submitfiles:
-        sp.call("qsub {}".format(submitfile),shell=True) 
+        with cd(workdir):
+            sp.call("qsub {}".format(submitfile),shell=True) 
 
 if args.merge:
     mergejobfiles(jobfiles,jobfile)
