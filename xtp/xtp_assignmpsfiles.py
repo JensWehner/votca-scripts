@@ -1,22 +1,23 @@
 #!/usr/bin/python
 
 import lxml.etree as lxml
-import argparse as ap
+from __tools__ import MyParser
 import os
 
-parser=ap.ArgumentParser(description="Assign mpsfile to molecules for iexciotn jobs, mps.tab files and ewald jobs")
+parser=MyParser(description="Assign mpsfile to molecules for iexcitoncl jobs, mps.tab files and ewald jobs")
 parser.add_argument("--path",type=str,required=True,help="Path to mps file folder")
 parser.add_argument("--jobfile",type=str,required=True,help="file to rewrite")
-parser.add_argument("--state",type=str,required=True,help="Defines the state e.g. n,n2s1,s1")
-parser.add_argument("--suffix",type=str,help="Ending for mps files in folder, defaults to state if not specified")
+parser.add_argument("--state",type=str,help="State to give tag to, only required for ewald")
+parser.add_argument("--format",type=str,required=True,help="Format string into which the id is placed e.g. Molecule_{}_n2s1.mps")
+parser.add_argument("--id",nargs="+",type=int,default=[1, 2],help="only rewrite first or second segment of pair,iexcitoncl")
+parser.add_argument("--compare", action='store_const', const=1, default=0,help="Only replace mps files where segtype can be found in formatstring")
 
 args=parser.parse_args()
 
-#if "s" in args.state:
-#	args.state+args.state.replace("s","s1")
 
-if args.suffix==None:
-	args.suffix=args.state
+
+
+
 
 
 filetype= os.path.splitext(args.jobfile)[1][1:]
@@ -26,11 +27,17 @@ if filetype=="jobs":
 	root = tree.getroot()
 	for job in root.iter('job'): 
 		inputs=job.find('input')
-		for segment in inputs:
-			segid=segment.get('id')
-			segtype=segment.get('type')
-			mpsfile=os.path.join(args.path,"{}_{}_{}.mps".format(segtype,segid,args.suffix))
-			segment.set('mps_file',mpsfile)
+        for i,segment in enumerate(inputs):
+            segid=segment.get('id')
+            if i+1 not in args.id:
+                continue
+            segtype=segment.get('type')
+            if args.compare:
+                if segtype not in args.format:
+                    continue
+            mpsfile=os.path.join(args.path,(args.format).format(segid))
+            segment.set('mps_file',mpsfile)
+            
 
 	with open(args.jobfile, 'w') as f:
 		f.write(lxml.tostring(root, pretty_print=True))
@@ -47,7 +54,7 @@ elif filetype=="xml":
 		name=tags[1]
 		state=tags[2]
 		if state==args.state:
-			mpsfile=os.path.join(args.path,"{}_{}_{}.mps".format(name,segid,args.suffix))
+			mpsfile=os.path.join(args.path,(args.format).format(segid))
 			mpsfile="{}:{}:{}".format(segid,name,mpsfile)
 			inputs.text=mpsfile
 
@@ -65,7 +72,7 @@ elif filetype=="tab":
 				entries=line.split()
 				segid=int(entries[0])
 				segtype=entries[1]
-				line="{} {} {} {} {}\n".format(segid,segtype,os.path.join(args.path,"{}_{}_{}.mps".format(segtype,segid,args.suffix)),entries[3],entries[4])
+				line="{} {} {} {} {}\n".format(segid,segtype,os.path.join(args.path,(args.format).format(segid)),entries[3],entries[4])
 				content.append(line)
 
 	with open(args.jobfile,'w') as f:

@@ -182,8 +182,11 @@ class job:
 
     def exciton(self,xyzfile):
         name="exciton"
+        root=self.readoptionfile("exciton",calcname="exciton")
+        for entry in root.iter(name):
+            dft_options=entry.find("dftpackage").text
 
-        shutil.copyfile(os.path.join(self.template,"gaussian_egwbse_molecule.xml"),os.path.join(self.path,"gaussian_egwbse_molecule.xml"))
+        shutil.copyfile(os.path.join(self.template,dft_options),os.path.join(self.path,dft_options))
 
         if self.rotation!=None:
                 print "Molecules are rotated with respect to each other, starting monomer calculation"

@@ -6,30 +6,34 @@ import os
 import errno
 import shutil
 import re
-import argparse as ap
+
 import numpy.linalg as lg
+from __tools__ import MyParser
+from __tools__ import make_sure_path_exists
+from __tools__ import XmlParser
+from __tools__ import cd
 
 
-parser=ap.ArgumentParser(description="Enviroment to do numerical polarisation calculations")
-parser.add_argument("-f","--fieldstrength", type=float,default=10E-4,help="Fieldstrength/Stepwidth")
-parser.add_argument('-s',"--state", type=int,help="Number of the singlet state to evaluate")
-parser.add_argument('-r',"--readout", type=bool,default=True,help="If True(default) will only readout outputfiles")
+parser=MyParser(description="Enviroment to do numerical polarisation calculations with gwbse and gaussian")
+parser.add_argument("--template","-t",type=str,required=True,help="Folder, from which to take votca-optionfiles from")
+parser.add_argument("--options","-o",type=str,required=True,help="optionfile")
+parser.add_argument("--setup", action='store_const', const=1, default=0,help="Setup folders")
+parser.add_argument("--run", action='store_const', const=1, default=0,help="Run jobs")
+parser.add_argument("--read", action='store_const', const=1, default=0,help="Readout outputfiles")
 args=parser.parse_args()
 
-readout=args.readout
-h=args.fieldstrength
-s=args.state
+
+root=XmlParser(args.options)
+
+h=float(root.find("fieldstrength").text)
+s=(root.find("tags").text).split()
+
 
 if h< 10E-5:
     print "Aborting. Field strength is too small"
     sys.exit()
 
-def make_sure_path_exists(path):
-    try:
-        os.mkdir(path)
-    except OSError as exception:
-        if exception.errno != errno.EEXIST:
-            raise
+
 
 def copyfromtemplate(path):
     base=os.path.realpath('.')
@@ -78,23 +82,53 @@ class job(object):
         line1="{0:1.4f}  {1:1.4f} {2:1.4f}\n".format(self.shift[0],self.shift[1],self.shift[2])
         line2="0.0  0.0  0.0  0.0  0.0  0.0\n"
         line3="0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0\n"
-        line4="0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0"
-        self.gaussianfield=line1+line2+line3+line4
+        line4="0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0\n\n"
+        
+        return line1+line2+line3+line4
 
     def makefolder(self):
        
         #print self.path
-        copyfromtemplate(self.foldername)    
-        self.changefile("{}/exciton.xml".format(self.foldername),"<tasks>input</tasks>","<tasks>dft,parse,gwbse</tasks>")
-        self.changefile("{}/system.com".format(self.foldername),"INSERTHERE",self.gaussianfield)
-       
+        copyfromtemplate(self.foldername)
+        root=XmlParser("{}/exciton.xml".format(self.foldername))
+        root.find("tasks").text="input"
+        XmlWriter(root,"{}/exciton.xml".format(self.foldername))
+        with cd(self.foldername):
+            sp.call("xtp_tools -e exciton -o exciton.xml > exciton.log",shell=True)
+            self.modcomfile("system.com")
+        root.find("tasks").text="dft,parse,gwbse"
+        XmlWriter(root,"{}/exciton.xml".format(self.foldername))
         
+        
+    def modcomfile(self,comfile):
+
+        keywords=["scf=tight","field=read"]
+        content=[]
+        breaks=0
+        with open(comfile,"r") as f:
+            for line in f.readlines:
+                if line=="\n":
+                    breaks+=1
+                elif line[0]=="#":
+                    if line[1]!="p":
+                        line="#p "+line[1:]
+                    for keyword in keywords:
+                        if keyword not in line:
+                            line="{} {}\n".format(line[:-1],keyword)
+                content.append(line)
+                if breaks==4:
+                    self.writefield()
+                    content.append(self.writefield())
+                
+        with open(comfile,"w") as f:
+            for line in content:
+                f.write(line)
+
     def runjob(self):
         print "Running job {}".format(self.identifier)
-        oldpath=os.path.realpath('.')
-        os.chdir(self.path)
-        sp.call("xtp_tools -e exciton -o exciton.xml > exciton.log",shell=True)
-        os.chdir(oldpath)
+        with cd(self.foldername):
+            sp.call("xtp_tools -e exciton -o exciton.xml > exciton.log",shell=True)
+
 
     def readlogfiledft(self):
         logfile=os.path.join(self.path,"system.log")
@@ -134,14 +168,7 @@ class job(object):
                     self.energy+=self.energybse
                     print "Total",self.energy, self.identifier
  
-    def changefile(self,File,pattern,string):
-        with open(File,'r') as f:
-            newlines = []
-            for line in f.readlines():
-                newlines.append(line.replace(pattern, string))
-        with open(File, 'w') as f:
-            for line in newlines:
-                f.write(line)       
+   
 
 class Polarisation(object):
 
@@ -260,11 +287,13 @@ class Polarisation(object):
 test=Polarisation(h)
 test.setupjobs()
 test.printjobs()
-if  not readout:
+if args.setup:
     test.createfolders()
+if args.run:
     test.runjobs()
-test.readlogs()
-test.calcpolarisationdft()
-test.calcpolarisation()
+if args.read:
+    test.readlogs()
+    test.calcpolarisationdft()
+    test.calcpolarisation()
 test.writelogfile("polarisation.log")
 
