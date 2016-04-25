@@ -12,6 +12,7 @@ from __tools__ import MyParser
 from __tools__ import make_sure_path_exists
 from __tools__ import XmlParser
 from __tools__ import cd
+from __tools__ import XmlWriter
 from __exciton__ import readexcitonlogfile
 
 
@@ -92,12 +93,13 @@ class job(object):
         #print self.path
         copyfromtemplate(self.foldername)
         root=XmlParser("{}/exciton.xml".format(self.foldername))
-        root.find("tasks").text="input"
+        exciton=root.find("exciton")
+        exciton.find("tasks").text="input"
         XmlWriter(root,"{}/exciton.xml".format(self.foldername))
         with cd(self.foldername):
             sp.call("xtp_tools -e exciton -o exciton.xml > exciton.log",shell=True)
             self.modcomfile("system.com")
-        root.find("tasks").text="dft,parse,gwbse"
+        exciton.find("tasks").text="dft,parse,gwbse"
         XmlWriter(root,"{}/exciton.xml".format(self.foldername))
         
         
@@ -106,8 +108,9 @@ class job(object):
         keywords=["scf=tight","field=read"]
         content=[]
         breaks=0
+        check=False
         with open(comfile,"r") as f:
-            for line in f.readlines:
+            for line in f.readlines():
                 if line=="\n":
                     breaks+=1
                 elif line[0]=="#":
@@ -117,9 +120,10 @@ class job(object):
                         if keyword not in line:
                             line="{} {}\n".format(line[:-1],keyword)
                 content.append(line)
-                if breaks==4:
+                if breaks==4 and check==False:
                     self.writefield()
                     content.append(self.writefield())
+                    check=True
                 
         with open(comfile,"w") as f:
             for line in content:
