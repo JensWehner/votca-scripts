@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import numpy as np
+import numpy.linalg as lg
 import sys
 import subprocess as sp
 import os
@@ -227,9 +228,16 @@ class Polarisation(object):
         with open(filename,"w") as f:
             f.write("\nDiag Polarisation Tensor of state {} with field {} au in Angstroem**3 \n".format(tag,h))
             f.write(np.array_str(b2a3*self.diagpol))  
+            f.write("\nVotca-Molpol entry of state {} with field {} au in Angstroem**3 \n".format(tag,h))
+            f.write(np.array_str(b2a3*self.diagpol))  
+            f.write("xx, xy, xz, yy, yz, zz\n")
+            f.write("{0:4.4f} 0.0 0.0 {1:4.4f} 0.0 {2:4.4f}\n".format(b2a3*self.diagpol[0,0],b2a3*self.diagpol[1,1],b2a3*self.diagpol[2,2]))
 
             f.write("\n\n\nDiag Polarisation Tensor of groundstate with field {} au in Angstroem**3 \n".format(h))
-            f.write(np.array_str(b2a3*self.diagpoldft))        
+            f.write(np.array_str(b2a3*self.diagpoldft))    
+            f.write("\n\n\nVotca-Molpol entry of groundstate with field {} au in Angstroem**3 \n".format(h))
+            f.write("xx, xy, xz, yy, yz, zz\n")
+            f.write("{0:4.4f} 0.0 0.0 {1:4.4f} 0.0 {2:4.4f}\n".format(b2a3*self.diagpoldft[0,0],b2a3*self.diagpoldft[1,1],b2a3*self.diagpoldft[2,2]))      
 
             f.write("\n\n\nPolarisation Tensor of groundstate with field {} au in atomic units \n".format(h))
             f.write(np.array_str(self.poldft))
