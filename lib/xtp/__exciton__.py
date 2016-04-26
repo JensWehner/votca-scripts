@@ -1,6 +1,8 @@
 import numpy as np
 import lxml.etree as lxml
 
+ryd2ev=1/13.605692
+
 def readexcitonlogfile(filename,dft=False,qp=False,singlets=False,triplets=False):
     dftlist=[]
     gwa=[]

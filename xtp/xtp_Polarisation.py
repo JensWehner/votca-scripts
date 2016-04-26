@@ -13,6 +13,7 @@ from __tools__ import make_sure_path_exists
 from __tools__ import XmlParser
 from __tools__ import cd
 from __tools__ import XmlWriter
+from __tools__ import RepresentsInt
 from __exciton__ import readexcitonlogfile
 
 
@@ -24,11 +25,13 @@ parser.add_argument("--run", action='store_const', const=1, default=0,help="Run 
 parser.add_argument("--read", action='store_const', const=1, default=0,help="Readout outputfiles")
 args=parser.parse_args()
 
+BohrtoAngstroem=0.5291772109
+b2a3=BohrtoAngstroem**3
 
 root=XmlParser(args.options)
 
 h=float(root.find("fieldstrength").text)
-s=(root.find("tags").text).split()
+tags=(root.find("tags").text).split()
 
 
 if h< 10E-5:
@@ -135,29 +138,6 @@ class job(object):
             sp.call("xtp_tools -e exciton -o exciton.xml > exciton.log",shell=True)
 
 
-    def readlogfiledft(self):
-        logfile=os.path.join(self.path,"system.log")
-        append=False
-        string=[]
-        with open(logfile,"r") as f:
-            lines=f.readlines()
-            for line in lines:
-                if "An electric field of" in line:
-                    splitlog=np.array([float(line.split()[4]),float(line.split()[5]),float(line.split()[6])])
-                    if not all(np.isclose(splitlog,self.shift)):
-                        print "Field specified does not match log file for {}. Exiting...".format(self.identifier)
-                        sys.exit()
-                if append:
-                    string.append(line)
-                elif "Test job not archived." in line:
-                    append=True
-        str1 = ''.join(string)
-        pattern=re.compile('HF=[-+]?\d*.\d*')
-        match=pattern.search(str1)
-        energystring=match.group(0).split("=")[1]
-        self.energydft=float(energystring)
-        self.energy+=self.energydft
-        print "DFT ",self.energydft, self.identifier
 
     def readlogfilebse(self,tag):
         logfile=os.path.join(self.path,"exciton.log")
@@ -175,12 +155,12 @@ class job(object):
             state=int(tag[1:])
         results=readexcitonlogfile(logfile,dft=True,singlets=singlets,triplets=triplets)
         if singlets:
-            self.energybse=float(results[5][state-1])/27.211385
+            self.energybse=(results[4][state-1])/27.211385
         elif triplets:
-            self.energybse=float(results[6][state-1])/27.211385
-        print "BSE ",self.energybse,tag, self.identifier
-        self.energy+=self.energybse
-        print "Total ",self.energy, tag, self.identifier
+            self.energybse=(results[5][state-1])/27.211385
+        self.energydft=results[0][2]/27.211385
+        self.energy=self.energybse+self.energydft
+        print "{}\t DFT Energy[Ryd]: {:1.5f}\t BSE Energy {} [Ryd]: {:1.5f}\t Total [Ryd]: {:1.5f}".format(self.identifier,self.energydft,tag,self.energybse,self.energy)
  
    
 
@@ -214,10 +194,9 @@ class Polarisation(object):
             job.runjob()
             i+=1
     
-    def readlogs(self):
+    def readlogs(self,tag):
         for job in self.joblist:
-            job.readlogfiledft()
-            job.readlogfilebse()
+            job.readlogfilebse(tag)
         
     def E(self,string):
         energy=0.0
@@ -237,15 +216,16 @@ class Polarisation(object):
         
     
     def printjobs(self):
-        print len(self.joblist)
+        print "Setting up {} jobs:".format(len(self.joblist))
+        temp=[]
         for job in self.joblist:
-            print job.identifier
+            temp.append(job.identifier)
+        print " ".join(temp)
 
-    def writelogfile(self,filename):
-        BohrtoAngstroem=0.5291772109
-        b2a3=BohrtoAngstroem**3
+    def writelogfile(self,filename,tag):
+        print "Writing output for state {} to {}".format(tag,filename)
         with open(filename,"w") as f:
-            f.write("\nDiag Polarisation Tensor of state singlet {} with field {} au in Angstroem**3 \n".format(s,h))
+            f.write("\nDiag Polarisation Tensor of state {} with field {} au in Angstroem**3 \n".format(tag,h))
             f.write(np.array_str(b2a3*self.diagpol))  
 
             f.write("\n\n\nDiag Polarisation Tensor of groundstate with field {} au in Angstroem**3 \n".format(h))
@@ -256,9 +236,9 @@ class Polarisation(object):
             f.write("\nPolarisation Tensor of groundstate with field {} au in Angstroem**3 \n".format(h))
             f.write(np.array_str(b2a3*self.poldft))
             
-            f.write("\nPolarisation Tensor of state singlet {} with field {} au in atomic units \n".format(s,h))
+            f.write("\nPolarisation Tensor of state {} with field {} au in atomic units \n".format(tag,h))
             f.write(np.array_str(self.pol))
-            f.write("\nPolarisation Tensor of state singlet {} with field {} au in Angstroem**3 \n".format(s,h))
+            f.write("\nPolarisation Tensor of state {} with field {} au in Angstroem**3 \n".format(tag,h))
             f.write(np.array_str(b2a3*self.pol))
            
             f.write("\nConfiguration / Energy / EnergyGS / EnergyBSE\n")
@@ -280,7 +260,8 @@ class Polarisation(object):
                     pol[a,b]=(self.E("+"+i+"+"+j)-self.E("+"+i)-self.E("+"+j)+2*self.E("")-self.E("-"+i)-self.E("-"+j)+self.E("-"+i+"-"+j))/(2*h**2)
         self.pol=-1*(pol+pol.T-np.diag(pol.diagonal()))
         self.diagpol=np.diag(lg.eigvalsh(self.pol))
-        print self.pol
+        print "Polarisation Tensor for excited state in au"
+        print np.array_str(self.pol)
 
     def calcpolarisationdft(self):
         pol=np.zeros((3,3))
@@ -296,7 +277,8 @@ class Polarisation(object):
                     pol[a,b]=(self.Edft("+"+i+"+"+j)-self.Edft("+"+i)-self.Edft("+"+j)+2*self.Edft("")-self.Edft("-"+i)-self.Edft("-"+j)+self.Edft("-"+i+"-"+j))/(2*h**2)
         self.poldft=-1*(pol+pol.T-np.diag(pol.diagonal()))
         self.diagpoldft=np.diag(lg.eigvalsh(self.poldft))
-        print self.poldft
+        print "Polarisation Tensor for groundstate in au"
+        print np.array_str(self.poldft)
         
 test=Polarisation(h)
 test.setupjobs()
@@ -307,8 +289,9 @@ if args.run:
     test.runjobs()
 if args.read:
     for tag in tags:
-        test.readlogs()
+        print "Evaluating polarisation for {}".format(tag)
+        test.readlogs(tag)
         test.calcpolarisationdft()
         test.calcpolarisation()
-        test.writelogfile("polarisation_{}.log".format(tag))
+        test.writelogfile("polarisation_{}.log".format(tag),tag)
 

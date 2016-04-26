@@ -2,6 +2,7 @@
 
 import lxml.etree as lxml
 from __tools__ import MyParser
+from __tools__ import XmlParser
 import os
 
 parser=MyParser(description="Assign mpsfile to molecules for iexcitoncl jobs, mps.tab files and ewald jobs")
@@ -22,30 +23,25 @@ args=parser.parse_args()
 
 filetype= os.path.splitext(args.jobfile)[1][1:]
 if filetype=="jobs":
-	parser=lxml.XMLParser(remove_comments=True)
-	tree = lxml.parse(args.jobfile,parser)
-	root = tree.getroot()
-	for job in root.iter('job'): 
-		inputs=job.find('input')
+    root=XmlParser(args.jobfile)
+    print "read in "
+    for inputs in root.iterfind('.//input'): 
         for i,segment in enumerate(inputs):
-            segid=segment.get('id')
             if i+1 not in args.id:
                 continue
-            segtype=segment.get('type')
             if args.compare:
+                segtype=segment.get('type')
                 if segtype not in args.format:
                     continue
+            segid=segment.get("id")
             mpsfile=os.path.join(args.path,(args.format).format(segid))
             segment.set('mps_file',mpsfile)
-            
-
-	with open(args.jobfile, 'w') as f:
-		f.write(lxml.tostring(root, pretty_print=True))
+    print "writing"
+    with open(args.jobfile, 'w') as f:
+        f.write(lxml.tostring(root, pretty_print=True))
 
 elif filetype=="xml":
-	parser=lxml.XMLParser(remove_comments=True)
-	tree = lxml.parse(args.jobfile,parser)
-	root = tree.getroot()
+	root=XmlParser(args.jobfile)
 	for job in root.iter('job'):
 		inputs=job.find('input')
 		tags=job.find("tag")
