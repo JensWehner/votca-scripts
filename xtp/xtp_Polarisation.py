@@ -229,7 +229,6 @@ class Polarisation(object):
             f.write("\nDiag Polarisation Tensor of state {} with field {} au in Angstroem**3 \n".format(tag,h))
             f.write(np.array_str(b2a3*self.diagpol))  
             f.write("\nVotca-Molpol entry of state {} with field {} au in Angstroem**3 \n".format(tag,h))
-            f.write(np.array_str(b2a3*self.diagpol))  
             f.write("xx, xy, xz, yy, yz, zz\n")
             f.write("{0:4.4f} 0.0 0.0 {1:4.4f} 0.0 {2:4.4f}\n".format(b2a3*self.diagpol[0,0],b2a3*self.diagpol[1,1],b2a3*self.diagpol[2,2]))
 
