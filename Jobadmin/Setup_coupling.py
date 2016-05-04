@@ -221,7 +221,10 @@ class job:
     def xcoupling(self,states):
         name="excitoncoupling"
         print "Setting up options for {} for {}".format(name,self.name)
-        shutil.copyfile(os.path.join(self.template,"system.orb"),os.path.join(self.path,"molA.orb"))
+        if not os.path.isfile(os.path.join(self.path,"molA.orb")):
+            sp.call("ln -s {} {}".format(os.path.join(self.template,"system.orb"),os.path.join(self.path,"molA.orb")),shell=True)    
+            
+        #shutil.copyfile(os.path.join(self.template,"system.orb"),os.path.join(self.path,"molA.orb"))
         for state in states:
             root=self.readpackagefile("bsecoupling")
             bsefilename="bsecoupling_{}".format(state)

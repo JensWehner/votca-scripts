@@ -151,7 +151,7 @@ def readexcitoncouplingxml(filename,states):
                 noB=int(coupling.get("excitonB"))
                 if noA+1==number and noB+1==number:
                     couplings.append(np.absolute(float(coupling.text)))
-        resultlist.append(couplings)
+            resultlist.append(couplings)
     return resultlist
 
 def readexcitoncoulingclassical(filename):
