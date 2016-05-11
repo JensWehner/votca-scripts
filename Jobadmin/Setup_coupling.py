@@ -210,7 +210,8 @@ class job:
             with cd(self.path):
                 print "Molecules are not rotated with respect to each other, just linking orb file"
                 sp.call("ln -s molA.orb molB.orb",shell=True)
-        sp.call("ln -s {} {}".format(os.path.join(self.template,"system.orb"),os.path.join(self.path,"molA.orb")),shell=True)
+        with cd(self.path):
+            sp.call("ln -s {} {}".format(os.path.relpath(os.path.join(self.template,"system.orb")),"molA.orb"),shell=True)
         print "Setting up options for {} for {}".format(name,self.name)
         self.writeoptionfile(self.readoptionfile(name),name)
         shutil.copyfile(os.path.join(self.template,"mbgft.xml"),os.path.join(self.path,"mbgft.xml"))
@@ -222,7 +223,8 @@ class job:
         name="excitoncoupling"
         print "Setting up options for {} for {}".format(name,self.name)
         if not os.path.isfile(os.path.join(self.path,"molA.orb")):
-            sp.call("ln -s {} {}".format(os.path.join(self.template,"system.orb"),os.path.join(self.path,"molA.orb")),shell=True)    
+            with cd(self.path):
+                sp.call("ln -s {} {}".format(os.path.relpath(os.path.join(self.template,"system.orb")),"molA.orb"),shell=True)    
             
         #shutil.copyfile(os.path.join(self.template,"system.orb"),os.path.join(self.path,"molA.orb"))
         for state in states:
