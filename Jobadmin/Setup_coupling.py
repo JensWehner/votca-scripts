@@ -193,11 +193,14 @@ class job:
                 self.createmonomer(xyzfile,"molB.xyz")
                 root=self.readoptionfile("exciton_single",calcname="exciton")
                 for entry in root.iter(name):
+                    
                     entry.find("tasks").text="input,dft,parse,gwbse"
                     entry.find("gwbse_options").text="mbgft_single.xml"
                     entry.find("archive").text="molB.orb"
                     molecule=entry.find("molecule")
-                    
+                    dft_options_single=entry.find("dftpackage").text
+                    if dft_options_single!=dft_options:
+                        shutil.copyfile(os.path.join(self.template,dft_options_single),os.path.join(self.path,dft_options_single))
                     molecule.find("xyz").text="molB.xyz"
                 self.writeoptionfile(root,"exciton_single")
                 shutil.copyfile(os.path.join(self.template,"mbgft_single.xml"),os.path.join(self.path,"mbgft_single.xml"))
