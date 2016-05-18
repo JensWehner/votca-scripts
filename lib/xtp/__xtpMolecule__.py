@@ -11,8 +11,8 @@ class molecule:
 
     def calccoG(self):
             
-            self.coG=self.calcgeomean()
-    
+        self.coG=self.calcgeomean()
+        self.pos=self.coG    
     
 
     def __add__(self,other):
@@ -65,7 +65,7 @@ class molecule:
         d=np.zeros(3)
         for i in self.atomlist:
             d+=(i.pos-mean)*i.q
-        d=d/float(len(self.atomlist))
+        
         return d
 
     def rotate(self,rotation,r=None):
@@ -104,7 +104,7 @@ class molecule:
         d=self.calcDmonopoles()
         with open(filename,"w") as f:  
             f.write("! Created by Python Script for Testing GWBSE\n")
-            f.write("! N={} Q[e]={:+1.7f} D[e*nm]={:+1.7e} {:+1.7e} {:+1.7e}\n".format(len(self.atomlist),self.calcQ(),d[0],d[1],d[2]))
+            f.write("! N={} Q[e]={:+1.7f} D[e*nm]={:+1.7e} {:+1.7e} {:+1.7e}\n".format(len(self.atomlist),self.calcQ(),d[0]*0.1,d[1]*0.1,d[2]*0.1))
             f.write("Units angstrom\n")
             for atom in self.atomlist:
                 f.write(atom.mpsentry())
@@ -175,4 +175,7 @@ class molecule:
                         d=np.zeros(3)
                     at.setmultipoles(q,d,quad,ptensor)
                     self.updateatom(at)
+        
+        self.calccoG()
+        
         return
