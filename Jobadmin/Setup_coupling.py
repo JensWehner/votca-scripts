@@ -103,12 +103,9 @@ class job:
         mol1.writexyz(os.path.join(self.path,outfile),header=True)      
 		  
  
-    def createdimer(self,infile,mpsfile=None):
+    def createdimer(self,infile):
         mol1=molecule()
-        mol1.readxyzfile(os.path.join(self.template,infile))
-        if mpsfile!=None:
-            mpsout="molB.mps"
-            self.creatempsdimer(mpsfile,mpsout)
+        mol1.readxyzfile(os.path.join(self.template,infile))            
         mol2=mol1.copy()
         if self.shift!=None:
             mol2.shift(self.shift)
@@ -159,6 +156,8 @@ class job:
         name="excitoncoupling_classical"
         calcname="excitoncoupling"
         shutil.copyfile(os.path.join(self.template,args.mps),os.path.join(self.path,"molA.mps"))
+        mpsout="molB.mps"
+        self.creatempsdimer(args.mps,mpsout)
         self.writeoptionfile(self.readoptionfile(name,calcname=calcname),name)
         with cd(self.path):
             
@@ -262,7 +261,7 @@ for i,distance in enumerate(reversed(distances)):
         print "{} Distance {} of {}\t Rotation {} of {}".format(time.strftime("%H:%M:%S",time.gmtime()),i+1,len(distances),j+1,len(rotations))
         jobs=job("{:g}".format(lg.norm(distance)),template,shift=distance,rotation=rotation)
         if args.setup:
-            jobs.setup(args.xyz,mpsfile=args.mps)
+            jobs.setup(args.xyz)
         if args.clcpl:
             jobs.classicalcoupling()
         if args.exciton:
