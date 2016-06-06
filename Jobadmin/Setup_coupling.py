@@ -89,7 +89,7 @@ class job:
 
     def setup(self,xyzfile,mpsfile=None):     
         self.makefolder()
-        self.createdimer(xyzfile,mpsfile=mpsfile)  
+        self.createdimer(xyzfile)  
 
     def createmonomer(self,infile,outfile):
         mol1=molecule()
