@@ -30,7 +30,7 @@ parser.add_argument("--exciton", action='store_const', const=1, default=0,help="
 parser.add_argument("--excpl", action='store_const', const=1, default=0,help="Run exciton coupling")
 parser.add_argument("--qmcpl", action='store_const', const=1, default=0,help="Run e/h coupling")
 parser.add_argument("--clcpl", action='store_const', const=1, default=0,help="Run classical coupling")
-
+parser.add_argument("--skipmonomer", action='store_const', const=1, default=0,help="Run exciton without monomer calculations")
 args=parser.parse_args()
 if args.mps=="":
     args.mps=None
@@ -186,32 +186,34 @@ class job:
             dft_options=entry.find("dftpackage").text
 
         shutil.copyfile(os.path.join(self.template,dft_options),os.path.join(self.path,dft_options))
-
-        if self.rotation!=None:
-                print "Molecules are rotated with respect to each other, starting monomer calculation"
-                self.createmonomer(xyzfile,"molB.xyz")
-                root=self.readoptionfile("exciton_single",calcname="exciton")
-                for entry in root.iter(name):
-                    
-                    entry.find("tasks").text="input,dft,parse,gwbse"
-                    entry.find("gwbse_options").text="mbgft_single.xml"
-                    entry.find("archive").text="molB.orb"
-                    molecule=entry.find("molecule")
-                    dft_options_single=entry.find("dftpackage").text
-                    if dft_options_single!=dft_options:
-                        shutil.copyfile(os.path.join(self.template,dft_options_single),os.path.join(self.path,dft_options_single))
-                    molecule.find("xyz").text="molB.xyz"
-                self.writeoptionfile(root,"exciton_single")
-                shutil.copyfile(os.path.join(self.template,"mbgft_single.xml"),os.path.join(self.path,"mbgft_single.xml"))
+        if not args.skipmonomer:
+            if self.rotation!=None:
+                    print "Molecules are rotated with respect to each other, starting monomer calculation"
+                    self.createmonomer(xyzfile,"molB.xyz")
+                    root=self.readoptionfile("exciton_single",calcname="exciton")
+                    for entry in root.iter(name):
+                        
+                        entry.find("tasks").text="input,dft,parse,gwbse"
+                        entry.find("gwbse_options").text="mbgft_single.xml"
+                        entry.find("archive").text="molB.orb"
+                        molecule=entry.find("molecule")
+                        dft_options_single=entry.find("dftpackage").text
+                        if dft_options_single!=dft_options:
+                            shutil.copyfile(os.path.join(self.template,dft_options_single),os.path.join(self.path,dft_options_single))
+                        molecule.find("xyz").text="molB.xyz"
+                    self.writeoptionfile(root,"exciton_single")
+                    shutil.copyfile(os.path.join(self.template,"mbgft_single.xml"),os.path.join(self.path,"mbgft_single.xml"))
+                    with cd(self.path):
+                        print "Running {} monomer for {}".format(name,self.name)
+                        sp.check_output("xtp_tools -e {0} -o {0}_single.xml > {0}_single.log".format(name),shell=True)
+                        sp.check_output("mv system.log molB.log".format(name),shell=True)
+                        sp.check_output("mv fort.7 molB.fort".format(name),shell=True)                    
+            else:
                 with cd(self.path):
-                    print "Running {} monomer for {}".format(name,self.name)
-                    sp.check_output("xtp_tools -e {0} -o {0}_single.xml > {0}_single.log".format(name),shell=True)
-                    sp.check_output("mv system.log molB.log".format(name),shell=True)
-                    sp.check_output("mv fort.7 molB.fort".format(name),shell=True)                    
+                    print "Molecules are not rotated with respect to each other, just linking orb file"
+                    sp.call("ln -s molA.orb molB.orb",shell=True)
         else:
-            with cd(self.path):
-                print "Molecules are not rotated with respect to each other, just linking orb file"
-                sp.call("ln -s molA.orb molB.orb",shell=True)
+            print "Skipping monomer calculation."
         with cd(self.path):
             sp.call("ln -s {} {}".format(os.path.relpath(os.path.join(self.template,"system.orb")),"molA.orb"),shell=True)
         print "Setting up options for {} for {}".format(name,self.name)
