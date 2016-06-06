@@ -91,8 +91,9 @@ if args.setup:
         options.find("job_file").text=jfile
         root.append(options)
         XmlWriter(root,optfile)
-        if rsync:
+        if rsync!=False:
             execdir=None
+            rsync=None
         else:
             execdir=currentdir
         command="xtp_parallel -e {} -o {} -f {} -s 0 -t {} -c {} > {}".format(calculator,optfile,sql,threads,cache,logfile)
