@@ -30,7 +30,7 @@ parser.add_argument("--exciton", action='store_const', const=1, default=0,help="
 parser.add_argument("--excpl", action='store_const', const=1, default=0,help="Run exciton coupling")
 parser.add_argument("--qmcpl", action='store_const', const=1, default=0,help="Run e/h coupling")
 parser.add_argument("--clcpl", action='store_const', const=1, default=0,help="Run classical coupling")
-parser.add_argument("--verbose","-v" action='store_const', const=1, default=0,help="Run votca with verbose on")
+parser.add_argument("--verbose","-v", action='store_const', const=1, default=0,help="Run votca with verbose on")
 parser.add_argument("--skipmonomer", action='store_const', const=1, default=0,help="Run exciton without monomer calculations")
 args=parser.parse_args()
 if args.mps=="":
