@@ -30,6 +30,7 @@ parser.add_argument("--exciton", action='store_const', const=1, default=0,help="
 parser.add_argument("--excpl", action='store_const', const=1, default=0,help="Run exciton coupling")
 parser.add_argument("--qmcpl", action='store_const', const=1, default=0,help="Run e/h coupling")
 parser.add_argument("--clcpl", action='store_const', const=1, default=0,help="Run classical coupling")
+parser.add_argument("--verbose","-v" action='store_const', const=1, default=0,help="Run votca with verbose on")
 parser.add_argument("--skipmonomer", action='store_const', const=1, default=0,help="Run exciton without monomer calculations")
 args=parser.parse_args()
 if args.mps=="":
@@ -177,7 +178,10 @@ class job:
                 sp.call("ln -s molA.fort molB.fort",shell=True)
             sp.call("ln -s fort.7 system.fort",shell=True)
             print "Running {} for {}".format(name,self.name)
-            sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
+            if args.verbose:
+                sp.check_output("xtp_tools -v -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
+            else:
+                sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
 
     def exciton(self,xyzfile):
         name="exciton"
@@ -205,7 +209,10 @@ class job:
                     shutil.copyfile(os.path.join(self.template,"mbgft_single.xml"),os.path.join(self.path,"mbgft_single.xml"))
                     with cd(self.path):
                         print "Running {} monomer for {}".format(name,self.name)
-                        sp.check_output("xtp_tools -e {0} -o {0}_single.xml > {0}_single.log".format(name),shell=True)
+                        if args.verbose:
+                            sp.check_output("xtp_tools -v -e {0} -o {0}_single.xml > {0}_single.log".format(name),shell=True)
+                        else:
+                            sp.check_output("xtp_tools -e {0} -o {0}_single.xml > {0}_single.log".format(name),shell=True)
                         sp.check_output("mv system.log molB.log".format(name),shell=True)
                         sp.check_output("mv fort.7 molB.fort".format(name),shell=True)                    
             else:
@@ -221,7 +228,10 @@ class job:
         shutil.copyfile(os.path.join(self.template,"mbgft.xml"),os.path.join(self.path,"mbgft.xml"))
         with cd(self.path):
             print "Running {} dimer for {}".format(name,self.name)
-            sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
+            if args.verbose:
+                sp.check_output("xtp_tools -v -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
+            else:
+                sp.check_output("xtp_tools -e {0} -o {0}.xml > {0}.log".format(name),shell=True)
             
     def xcoupling(self,states):
         name="excitoncoupling"
@@ -254,7 +264,10 @@ class job:
                 
                 
                 print "Running {} for {} with {} occ/unocc states for each molecule giving {} states".format(name,self.name,state,2*state**2)
-                sp.check_output("xtp_tools -e {0} -o {1}.xml > {1}.log".format(name,optionfilename),shell=True)
+                if args.verbose:
+                    sp.check_output("xtp_tools -v -e {0} -o {1}.xml > {1}.log".format(name,optionfilename),shell=True)
+                else:
+                    sp.check_output("xtp_tools -e {0} -o {1}.xml > {1}.log".format(name,optionfilename),shell=True)
 
 template=args.template
 distances,rotations,states=readoptionsfile(args.option)
