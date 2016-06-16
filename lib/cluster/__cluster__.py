@@ -73,7 +73,7 @@ def write_cluster_batch(
         ofs.write('set jobdir="/usr/scratch/%s/job_$jno"\n' % username)
         ofs.write('mkdir -p $jobdir\n')
         ofs.write('rm -rf $jobdir/*\n')
-        if rsync==None:
+        if rsync==True:
             ofs.write('rsync -ar $basedir/* $jobdir\n\n')
         else:
             ofs.write('rsync -ar $basedir/{} $jobdir\n\n'.format(rsync))
