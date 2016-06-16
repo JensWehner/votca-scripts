@@ -47,7 +47,7 @@ numberofjobs=int(root.find("clusterjobs").text)
 workdir=root.find("workdir").text
 
 options=XmlParser(optionfile,entry=calculator)
-
+print rsync, "rsync"
 jobfiles=[]
 optionfiles=[]
 submitfiles=[]
@@ -91,12 +91,13 @@ if args.setup:
         options.find("job_file").text=jfile
         root.append(options)
         XmlWriter(root,optfile)
+        print rsync!=False
         if rsync!=False:
             execdir=None
             rsync=None
         else:
             execdir=currentdir
-        print "RSYNC", rsync
+        print rsync 
         command="xtp_parallel -e {} -o {} -f {} -s 0 -t {} -c {} > {}".format(calculator,optfile,sql,threads,cache,logfile)
         write_cluster_batch(command,tag,outfile=subfile,outlog="{}.log".format(i),errlog="{}.err".format(i),queue=queue,procs=procs,module=["gaussian/g03","votca/git_cluster"],source="/sw/linux/gromacs/5.1.2/bin/GMXRC",execdir=execdir,rsync=rsync)
 
