@@ -273,7 +273,7 @@ template=args.template
 distances,rotations,states=readoptionsfile(args.option)
 for i,distance in enumerate(reversed(distances)):
     for j,rotation in enumerate(rotations):
-        print "{} Distance {} of {}\t Rotation {} of {}".format(time.strftime("%H:%M:%S",time.gmtime()),i+1,len(distances),j+1,len(rotations))
+        print "{} Distance {} of {}\t Rotation {} of {}".format(time.strftime("%H:%M:%S",time.localtime()),i+1,len(distances),j+1,len(rotations))
         jobs=job("{:g}".format(lg.norm(distance)),template,shift=distance,rotation=rotation)
         if args.setup:
             jobs.setup(args.xyz)

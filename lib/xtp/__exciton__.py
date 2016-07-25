@@ -122,9 +122,9 @@ def readcouplingxml(filename):
             orbA=int(overlap.get("orbA"))
             orbB=int(overlap.get("orbB"))
             if orbA==homoA and orbB==homoB:
-                Je.append(np.absolute(float(overlap.text)))
+                Je.append((float(overlap.text)))
             elif orbA==homoA+1 and orbB==homoB+1:
-                Jh.append(np.absolute(float(overlap.text)))
+                Jh.append((float(overlap.text)))
     return [Je,Jh]
 
 def readexcitoncouplingxml(filename,states):
@@ -150,7 +150,7 @@ def readexcitoncouplingxml(filename,states):
                 noA=int(coupling.get("excitonA"))
                 noB=int(coupling.get("excitonB"))
                 if noA+1==number and noB+1==number:
-                    couplings.append(np.absolute(float(coupling.text)))
+                    couplings.append((float(coupling.text)))
             resultlist.append(couplings)
     return resultlist
 
