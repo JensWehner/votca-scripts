@@ -1,5 +1,6 @@
 import numpy as np
 import lxml.etree as lxml
+import datetime
 
 ryd2ev=1/13.605692
 
@@ -163,3 +164,55 @@ def readexcitoncoulingclassical(filename):
         Coupling=pair[0]        
         results.append(float(Coupling.get("jABstatic")))
     return results
+
+def datetimefromstring(day,time):
+    return datetime.datetime.strptime("{} {}".format(day,time),"%Y-%m-%d %H:%M:%S")
+
+def readbenchmarkexciton(filename):
+
+    singletdiag=None
+    singletsetup=None
+    tripletdiag=None
+    tripletsetup=None
+    with open(filename,"r") as f:
+        for line in f.readlines():
+            if "DFT data was created by" in line:
+                startday=line.split()[2]
+                starttime=line.split()[3]
+                start=datetimefromstring(startday,starttime)
+            elif "Direct part of e-h interaction" in line: 
+                startday=line.split()[2]
+                starttime=line.split()[3]
+                tripletsetup=datetimefromstring(startday,starttime)
+            elif "Solved BSE for triplets" in line:
+                startday=line.split()[2]
+                starttime=line.split()[3]
+                tripletdiag=datetimefromstring(startday,starttime)
+
+            elif "Exchange part of e-h interaction" in line: 
+                startday=line.split()[2]
+                starttime=line.split()[3]
+                singletsetup=datetimefromstring(startday,starttime)
+            elif "Solved BSE for singlets" in line:
+                startday=line.split()[2]
+                starttime=line.split()[3]
+                singletdiag=datetimefromstring(startday,starttime)
+
+    result=[None,None,None,None]
+    if tripletsetup!=None:
+        result[0]=(tripletsetup-start).total_seconds()
+    if tripletdiag!=None:
+        result[1]=(tripletdiag-tripletsetup).total_seconds()
+    if singletsetup!=None:
+        if(tripletdiag!=None):
+            result[2]=(singletsetup-tripletdiag).total_seconds()
+        else:
+            result[2]=(singletsetup-tripletsetup).total_seconds()
+    if singletdiag!=None:
+        result[3]=(singletdiag-singletsetup).total_seconds()
+
+    return result
+
+    
+
+
