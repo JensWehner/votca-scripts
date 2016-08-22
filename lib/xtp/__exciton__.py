@@ -2,7 +2,9 @@ import numpy as np
 import lxml.etree as lxml
 import datetime
 
-ryd2ev=1/13.605692
+ryd2ev=13.605692
+
+   
 
 def readexcitonlogfile(filename,dft=False,qp=False,singlets=False,triplets=False):
     dftlist=[]
@@ -18,7 +20,7 @@ def readexcitonlogfile(filename,dft=False,qp=False,singlets=False,triplets=False
     dftenergy=None
     with open(filename,"r") as f:
         for line in f.readlines():
-            if "QM energy[eV]:" in line and dftenergy==None:
+            if "QM energy" in line and dftenergy==None:
                 dftenergy=float(line.split()[-1])
             elif dft and "S-C" in line and "S-X" in line:
                 entries=line.split()
@@ -26,8 +28,10 @@ def readexcitonlogfile(filename,dft=False,qp=False,singlets=False,triplets=False
                 gwa.append(ryd2ev*float(entries[-1]))
                 if "HOMO"==entries[2] and homo==None:
                     homo=int(entries[4])-1
+                    #print entries
                 if "LUMO"==entries[2] and lumo==None:
                     lumo=int(entries[4])-1
+                    #print entries
             elif "====== Diagonalized quasiparticle energies (Rydberg) ======" in line:
                 qpbool=True
             elif qpbool and qp and "PQP" in line and "DQP" in line:
@@ -42,7 +46,7 @@ def readexcitonlogfile(filename,dft=False,qp=False,singlets=False,triplets=False
                 s.append(float(line.split()[7]))
     results=[]
     if dft:
-        results.append(np.array([homo,lumo,dftenergy]))
+        results.append([homo,lumo,dftenergy])
         results.append(np.array(dftlist))
         results.append(np.array(gwa))
     else:
