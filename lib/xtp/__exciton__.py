@@ -20,7 +20,7 @@ def readexcitonlogfile(filename,dft=False,qp=False,singlets=False,triplets=False
     dftenergy=None
     with open(filename,"r") as f:
         for line in f.readlines():
-            if "QM energy" in line and dftenergy==None:
+            if "QM energy[eV]" in line and dftenergy==None:
                 dftenergy=float(line.split()[-1])
             elif dft and "S-C" in line and "S-X" in line:
                 entries=line.split()
