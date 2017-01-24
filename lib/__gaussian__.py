@@ -1,6 +1,7 @@
 import numpy as np
 import lxml.etree as lxml
 import datetime
+import sys
 
 ryd2ev=13.605692
 
@@ -42,8 +43,31 @@ def readexcitedstateenergies(filename):
                     row=line.split()
                     if row[5]=="eV":
                         energies.append(float(row[4]))     
+    if check==False:
+        print "There is no polarisability in file. Leaving"
+        sys.exit()
 
     return np.array(energies)
+
+def readexcitedstateoscstrength(filename):
+    check=False
+    osc=[]
+    with open(filename,"r") as f:
+        for line in f:
+            if "Excitation energies and oscillator strengths" in line:
+                check=True
+            if check:
+                if "Excited State" in line and "symmetry" not in line:
+                    row=line.split()
+                    if row[5]=="eV":
+                        osc.append(float(row[8].split("=")[-1]))
+    if check==False:
+        print "There is no polarisability in file. Leaving"
+        sys.exit()
+
+                        
+
+    return np.array(osc)
                 
 
       
