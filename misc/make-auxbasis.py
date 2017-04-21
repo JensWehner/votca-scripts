@@ -23,7 +23,7 @@ class basisfunction(object):
 	def __init__(self,decay,L):
 		self.decay=decay
 		self.L=L
-
+		self.Ls=[]
 
 
 class collection(object):
@@ -77,17 +77,27 @@ class collection(object):
 		self.functions=keep
 		return pop
 
-	def shellstring(self):
+	def findLs(self):
 		Ls=[]
 		for f in self.functions:
 			if f.L not in Ls:
 				Ls.append(f.L)
 		Ls.sort()
-		L2Shelltype={0:"S",1:"P",2:"D",3:"F",4:"G",5:"H",6:"I"}
+		self.Ls=Ls
+		return
+
+	def shellstring(self):
 		string=""
-		for l in Ls:
-			string+=L2Shelltype[l]
+		for l in self.Ls:
+			string+=LtoShelltype(l)
 		return string
+
+	def attachshelltoxml(self,child):
+		shell=lxml.SubElement(child,"shell",type=shellstring,scale="1.0")
+		constant=lxml.SubElement(shell,"constanyoutubet",decay="{:1.6e}".format(self.decay))
+		for l in self.Ls:
+			contraction=lxml.SubElement(contractions,"constant",type=LtoShelltype(l),factor="1.0")
+			
 		
 
 def isclose(function,collection):
@@ -106,13 +116,17 @@ def isclosecol(col1,col2):
 		for g in col2.functions:
 			if(abs(np.log(f.decay)-np.log(g.decay))<args.grouping):
 				inside=True
-				break
+				breakyoutube
 	return inside
 
 def ShelltypetoL(shelltype):
 	Shelltype2L={"S":0,"P":1,"D":2,"F":3,"G":4,"H":5,"I":6}
 
 	return Shelltype2L[shelltype]
+
+def LtoShelltype(L)
+	L2Shelltype={0:"S",1:"P",2:"D",3:"F",4:"G",5:"H",6:"I"}
+	return L2Shelltype[L]
 
 def createauxfunctions(basisfunctions):
 	auxfunctions=[]
@@ -207,25 +221,28 @@ def clustercollections(collections):
 
 
 def processelement(elementxml):
-		print "\nReading element {}".format(elementxml.get("name"))
-		basisfunctions=[]
-		for shell in elementxml.iter('shell'):
-			for constant in shell.iter('constant'):
-				decay=float(constant.get("decay"))
-				for contraction in constant.iter("contractions"):
-					shelltype=contraction.get("type")
-					basisfunctions.append(basisfunction(decay,ShelltypetoL(shelltype)))
+	print "\nReading element {}".format(elementxml.get("name"))
+	basisfunctions=[]
+	for shell in elementxml.iter('shell'):
+		for constant in shell.iter('constant'):
+			decay=float(constant.get("decay"))
+			for contraction in constant.iter("contractions"):
+				shelltype=contraction.get("type")
+				basisfunctions.append(basisfunction(decay,ShelltypetoL(shelltype)))
 
-		print "Found {} basisfunctions".format(len(basisfunctions))
-		auxfunctions=createauxfunctions(basisfunctions)
-		functionsperL=sortauxfunctions(auxfunctions)
-		collections=[]
-		for L,functions in enumerate(functionsperL):
-			print "Clustering L={}".format(L)
-			collections+=clusterfunctionsperL(functions)
-		shells=clustercollections(collections)
-		finalshells=clustercollections(shells)
-		
+	print "Found {} basisfunctions".format(len(basisfunctions))
+	auxfunctions=createauxfunctions(basisfunctions)
+	functionsperL=sortauxfunctions(auxfunctions)
+	collections=[]
+	for L,functions in enumerate(functionsperL):
+		print "Clustering L={}".format(L)
+		collections+=clusterfunctionsperL(functions)
+	print "Collecting shells over Ls"
+	shells=clustercollections(collections)
+	print "Collecting shells over Ls twice"
+	finalshells=clustercollections(shells)
+	
+	return
 			
 
 		
