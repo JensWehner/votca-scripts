@@ -6,11 +6,20 @@ import argparse
 
 parser=argparse.ArgumentParser(description="Creates an aux basis set from a votca xtp basisset file")
 parser.add_argument('-f',"--basisfile",type=str,required=True,help="xtp basissetfile")
+parser.add_argument('-o',"--outfile",type=str,default="",help="outputfile")
 parser.add_argument('-g',"--grouping",type=float,default=0.1,help="Cutoff at which basisfunctions are grouped together in deviation from the arithmetic mean; Default 0.1")
 parser.add_argument('-c',"--cutoff",type=float,default=60,help="Cutoff for very localised basisfunctions; Default 60")
+parser.add_argument('-e',"--element",type=str,default="",help="Print out only the element specified ")
 parser.add_argument('-l',"--lmax",type=int,default=4,help="maximum angular momentum in aux basisset: Default:4")
 
 args=parser.parse_args()
+
+outputfile=False
+if (args.outfile!=""):
+    outputfile=args.outfile
+onlyoneelement=False
+if(args.element!=""):
+    onlyoneelement=args.element
 
 if args.lmax>6:
 	print "ERROR: Higher order functions than H (L=6) are not implemented"
@@ -92,6 +101,32 @@ class collection(object):
 			string+=LtoShelltype(l)
 		return string
 
+	def checkcompleteness(self):
+		return (len(self.Ls)==(self.Ls[-1]-self.Ls[0]+1))
+
+
+	def splitshell(self):
+		newcollections=[]
+		breakpointLs=[]
+		if( not checkcompleteness()):
+			if(len(self.Ls)>1):
+				for Ls1,Ls2 in zip(self.Ls[:-1],self.Ls[1:]):            
+					if Ls1+1!=Ls2:
+						breakpointLs.append(Ls1)
+				for point in reversed(breakpoints):
+					keep=[]
+					newcollection=collection()
+					for function in self.functions:
+						if function.L<point:
+							keep.append(function)
+						else:
+							newcollection.addbasisfunction(function)
+					self.functions=keep
+					newcollections.append(newcollection)     
+		self.calcmean()
+		self.calcdecay()                           
+		return newcollections              
+
 	def attachshelltoxml(self,child):
 		shell=lxml.SubElement(child,"shell",type=shellstring,scale="1.0")
 		constant=lxml.SubElement(shell,"constanyoutubet",decay="{:1.6e}".format(self.decay))
@@ -124,7 +159,7 @@ def ShelltypetoL(shelltype):
 
 	return Shelltype2L[shelltype]
 
-def LtoShelltype(L)
+def LtoShelltype(L):
 	L2Shelltype={0:"S",1:"P",2:"D",3:"F",4:"G",5:"H",6:"I"}
 	return L2Shelltype[L]
 
@@ -167,10 +202,11 @@ def readinbasisset(xmlfile):
 	tree = lxml.parse(xmlfile,parser)
 	root = tree.getroot()
 	print "Basisset name is {}".format(root.get("name"))
+	output = lxml.Element("basis",name="aux"+basissetname)
 	for element in root.iter('element'): 
-		
-		processelement(element)	
-	return
+		if onlyoneelement==False or element.get("name")==onlyoneelement:
+			output.append(processelement(element))	
+	return output
 
 def clusterfunctionsperL(functions):
 	functions.sort(key=lambda function: function.decay,reverse=True)
@@ -198,6 +234,8 @@ def clusterfunctionsperL(functions):
 		print "{} Functions: {} Decay {}".format(i,col.size(),col.decay)
 	return collections
 
+
+
 def clustercollections(collections):
 	collections.sort(key=lambda col: col.decay,reverse=True)
 	finalshells=[]
@@ -216,12 +254,13 @@ def clustercollections(collections):
 		print "{} Functions: {} Decay {} Type {}".format(i,col.size(),col.decay, col.shellstring())
 	return finalshells
 			
-	
+
 
 
 
 def processelement(elementxml):
 	print "\nReading element {}".format(elementxml.get("name"))
+    
 	basisfunctions=[]
 	for shell in elementxml.iter('shell'):
 		for constant in shell.iter('constant'):
@@ -241,13 +280,23 @@ def processelement(elementxml):
 	shells=clustercollections(collections)
 	print "Collecting shells over Ls twice"
 	finalshells=clustercollections(shells)
-	
-	return
+	splittshells=[]
+	for shell in finalshells:
+		splittshells+=shell.splitshell()
+	finalshells+=splittshells
+	outputxml = lxml.Element("element",name=elementxml.get("name"))
+	for shell in finalshells:
+		shell.attachshelltoxml(outputxml)
+	return outputxml
 			
 
 		
-readinbasisset(args.basisfile)
-	
+outputxml=readinbasisset(args.basisfile)
+if outputfile==False:
+    print lxml.tostring(outputxml, pretty_print=True)
+else:
+    with open(outputfile, 'w') as f:
+        f.write(lxml.tostring(outputxml, pretty_print=True))
 	
 	
 
