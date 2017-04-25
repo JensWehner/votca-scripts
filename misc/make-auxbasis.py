@@ -96,6 +96,7 @@ class collection(object):
 		return
 
 	def shellstring(self):
+		self.findLs()
 		string=""
 		for l in self.Ls:
 			string+=LtoShelltype(l)
@@ -108,30 +109,30 @@ class collection(object):
 	def splitshell(self):
 		newcollections=[]
 		breakpointLs=[]
-		if( not checkcompleteness()):
+		if( not self.checkcompleteness()):
 			if(len(self.Ls)>1):
 				for Ls1,Ls2 in zip(self.Ls[:-1],self.Ls[1:]):            
 					if Ls1+1!=Ls2:
 						breakpointLs.append(Ls1)
-				for point in reversed(breakpoints):
+				for point in reversed(breakpointLs):
 					keep=[]
 					newcollection=collection()
 					for function in self.functions:
-						if function.L<point:
+						if function.L<=point:
 							keep.append(function)
 						else:
 							newcollection.addbasisfunction(function)
 					self.functions=keep
-					newcollections.append(newcollection)     
+					newcollections.append(newcollection) 
 		self.calcmean()
 		self.calcdecay()                           
 		return newcollections              
 
 	def attachshelltoxml(self,child):
-		shell=lxml.SubElement(child,"shell",type=shellstring,scale="1.0")
-		constant=lxml.SubElement(shell,"constanyoutubet",decay="{:1.6e}".format(self.decay))
+		shell=lxml.SubElement(child,"shell",type=self.shellstring(),scale="1.0")
+		constant=lxml.SubElement(shell,"constant",decay="{:1.6e}".format(self.decay))
 		for l in self.Ls:
-			contraction=lxml.SubElement(contractions,"constant",type=LtoShelltype(l),factor="1.0")
+			contraction=lxml.SubElement(constant,"constant",type=LtoShelltype(l),factor="1.0")
 			
 		
 
@@ -151,12 +152,11 @@ def isclosecol(col1,col2):
 		for g in col2.functions:
 			if(abs(np.log(f.decay)-np.log(g.decay))<args.grouping):
 				inside=True
-				breakyoutube
+				break
 	return inside
 
 def ShelltypetoL(shelltype):
 	Shelltype2L={"S":0,"P":1,"D":2,"F":3,"G":4,"H":5,"I":6}
-
 	return Shelltype2L[shelltype]
 
 def LtoShelltype(L):
@@ -189,7 +189,7 @@ def sortauxfunctions(auxfunctions):
 		functionsperL.append([])
 
 	for function in auxfunctions:
-		functionsperL[function.L].append(function)
+		functionsperL[function.L].append(function) 
 
 	for i,L in enumerate(functionsperL):
 		print "{} functions have L={}".format(len(L),i)
@@ -202,7 +202,7 @@ def readinbasisset(xmlfile):
 	tree = lxml.parse(xmlfile,parser)
 	root = tree.getroot()
 	print "Basisset name is {}".format(root.get("name"))
-	output = lxml.Element("basis",name="aux"+basissetname)
+	output = lxml.Element("basis",name="aux-"+root.get("name"))
 	for element in root.iter('element'): 
 		if onlyoneelement==False or element.get("name")==onlyoneelement:
 			output.append(processelement(element))	
@@ -284,7 +284,7 @@ def processelement(elementxml):
 	for shell in finalshells:
 		splittshells+=shell.splitshell()
 	finalshells+=splittshells
-	outputxml = lxml.Element("element",name=elementxml.get("name"))
+	outputxml = lxml.Element("element",name=elementxml.get("name"),help="Created by make-auxbasis.py with Lmax={} and g={}".format(args.lmax,args.grouping))
 	for shell in finalshells:
 		shell.attachshelltoxml(outputxml)
 	return outputxml
