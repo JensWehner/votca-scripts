@@ -132,7 +132,7 @@ class collection(object):
 		shell=lxml.SubElement(child,"shell",type=self.shellstring(),scale="1.0")
 		constant=lxml.SubElement(shell,"constant",decay="{:1.6e}".format(self.decay))
 		for l in self.Ls:
-			contraction=lxml.SubElement(constant,"constant",type=LtoShelltype(l),factor="1.0")
+			contraction=lxml.SubElement(constant,"contractions",type=LtoShelltype(l),factor="1.0")
 			
 		
 
