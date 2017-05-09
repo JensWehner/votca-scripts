@@ -3,7 +3,7 @@ import lxml.etree as lxml
 import datetime
 
 ryd2ev=13.605692
-
+hrt2ev=2*ryd2ev
    
 
 def readexcitonlogfile(filename,dft=False,qp=False,singlets=False,triplets=False):
@@ -22,20 +22,24 @@ def readexcitonlogfile(filename,dft=False,qp=False,singlets=False,triplets=False
         for line in f.readlines():
             if "QM energy[eV]" in line and dftenergy==None:
                 dftenergy=float(line.split()[-1])
+			elif "====== Perturbative quasiparticle energies (Hartree) ======" in line:
+				conversion=hrt2ev
+			elif "====== Perturbative quasiparticle energies (Rydberg) ======" in line:
+				conversion=ryd2ev
             elif dft and "S-C" in line and "S-X" in line:
                 entries=line.split()
-                dftlist.append(ryd2ev*float(entries[7]))
-                gwa.append(ryd2ev*float(entries[-1]))
+                dftlist.append(conversion*float(entries[7]))
+                gwa.append(conversion*float(entries[-1]))
                 if "HOMO"==entries[2] and homo==None:
                     homo=int(entries[4])-1
                     #print entries
                 if "LUMO"==entries[2] and lumo==None:
                     lumo=int(entries[4])-1
                     #print entries
-            elif "====== Diagonalized quasiparticle energies (Rydberg) ======" in line:
+            elif "====== Diagonalized quasiparticle energies" in line:
                 qpbool=True
             elif qpbool and qp and "PQP" in line and "DQP" in line:
-                qp.append(ryd2ev*float(line.split()[-1]))
+                qp.append(conversion*float(line.split()[-1]))
             elif "====== triplet energies (eV) ======" in line:
                 tbool=True
             elif tbool and triplets and "T =" in line:
@@ -107,8 +111,8 @@ def getcouplingfromsplit(filename,states):
             print "state {} not known".format(state)
         splitt=results[resultsindex][stateindex+1]-results[resultsindex][stateindex]
         #if state=="e":
-            #print results[resultsindex][stateindex+1]/ryd2ev
-            #print results[resultsindex][stateindex]/ryd2ev
+            #print results[resultsindex][stateindex+1]/conversion
+            #print results[resultsindex][stateindex]/conversion
             #print 0.5*splitt
         coupling.append(0.5*splitt)
     return coupling
