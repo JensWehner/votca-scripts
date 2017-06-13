@@ -102,7 +102,7 @@ class votcafolder(object):
             f.write(lxml.tostring(root, pretty_print=True))
 
     def neighborlist(self):
-        name="neighborlist"
+        name="xneighborlist"
         self.writeoptionfile(self.readoptionfile(name),name)
         #print "xtp_run -e {} -o OPTIONFILES/{}.xml -f {}".format(name,name,os.path.basename(self.sql))
         with cd(self.path):
@@ -110,7 +110,7 @@ class votcafolder(object):
             sp.check_output("xtp_run -e {} -o OPTIONFILES/{}.xml -f {} > neighborlist.log".format(name,name,os.path.basename(self.sql)),shell=True,stderr=sp.STDOUT)
 
     def einternal(self):
-        name="einternal"
+        name="xeinternal"
         self.writeoptionfile(self.readoptionfile(name),name)
         with cd(self.path):
             print "Importing internal energies for {}".format(self.name)
@@ -138,10 +138,10 @@ class votcafolder(object):
             sp.check_output("xtp_parallel -e {} -o  OPTIONFILES/{}.xml -f {} -j read >> iexcitoncl.log".format(name,name,os.path.basename(self.sql)),shell=True,stderr=sp.STDOUT)
 
     def ianalyze(self):
-        name="ianalyze"
+        name="xianalyze"
         self.writeoptionfile(self.readoptionfile(name),name)
         with cd(self.path):
-            print "Running ianalyze for {}".format(self.name)
+            print "Running xianalyze for {}".format(self.name)
             sp.check_output("xtp_run -e {} -o OPTIONFILES/{}.xml -f {} -s 0 > ianalyze.log".format(name,name,os.path.basename(self.sql)),shell=True)
 
     def izindo(self):
@@ -174,7 +174,6 @@ class votcafolder(object):
                 sp.check_output("xtp_parallel -e {} -o OPTIONFILES/{}.xml -f {} -j write -s 0 > egwbse.log".format(name,name,os.path.basename(self.sql)),shell=True)
 
         elif args.local:
-             elif args.local:
    
             name="egwbselocal"
             calcname="ewald"
@@ -201,11 +200,11 @@ class votcafolder(object):
                 print "Running stateserver for ewald for {}".format(self.name)
                 sp.check_output("xtp_run -e {} -o OPTIONFILES/{}.xml -f {} -s 0 > stateserver.log".format(name,name,os.path.basename(self.sql)),shell=True)
 
-            name="jobwriter"
+            name="xjobwriter"
             self.writeoptionfile(self.readoptionfile(name),name)
 
             with cd(self.path):
-                print "Running jobwriter for ewald for {}".format(self.name)
+                print "Running xjobwriter for ewald for {}".format(self.name)
                 sp.check_output("xtp_run -e {} -o OPTIONFILES/{}.xml -f {} -s 0 > jobwriter.log".format(name,name,os.path.basename(self.sql)),shell=True)
                 sp.call("mv jobwriter.mps.chrg.xml jobs.ewald.xml",shell=True)
 
@@ -226,11 +225,11 @@ class votcafolder(object):
                 sp.call("xtp_parseewald.py -j  jobs.ewald.xml  -f {}".format(os.path.basename(self.sql)),shell=True)
 
     def eanalyze(self):
-        name="eanalyze"
+        name="xeanalyze"
         
         self.writeoptionfile(self.readoptionfile(name),name)
         with cd(self.path):
-            print "Running eanalyze for {}".format(self.name)
+            print "Running xeanalyze for {}".format(self.name)
             sp.check_output("xtp_run -e {} -o OPTIONFILES/{}.xml -f {} -s 0 > eanalyze.log".format(name,name,os.path.basename(self.sql)),shell=True)
             
 
