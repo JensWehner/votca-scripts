@@ -19,7 +19,7 @@ parser.add_argument('-n',"--stepnumber", type=int, default=10,help="number of sn
 parser.add_argument('-t',"--starttime",type=float,default=-1,help="Time to start at [ps], if number is negative, snapshots will be taken from the end, going backwards")
 args=parser.parse_args()
 
-command="gmxcheck -f {}".format(args.trajectory)
+command="gmx check -f {}".format(args.trajectory)
 print command
 result=sp.check_output(command, stderr=sp.STDOUT,shell=True)
 #results=result.split("\n")
@@ -42,7 +42,7 @@ for i in range(args.stepnumber):
     else:
 
         outputfile="{}_{:.5e}ps.gro".format(args.output.split()[0],time)
-        command="echo 0 | trjconv -f {} -o {} -s {} -dump {}".format(args.trajectory,outputfile,args.topol,time)
+        command="echo 0 | gmx trjconv -f {} -o {} -s {} -dump {}".format(args.trajectory,outputfile,args.topol,time)
         sp.check_output(command,shell=True)
     
         

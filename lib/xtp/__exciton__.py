@@ -22,10 +22,10 @@ def readexcitonlogfile(filename,dft=False,qp=False,singlets=False,triplets=False
         for line in f.readlines():
             if "QM energy[eV]" in line and dftenergy==None:
                 dftenergy=float(line.split()[-1])
-			elif "====== Perturbative quasiparticle energies (Hartree) ======" in line:
-				conversion=hrt2ev
-			elif "====== Perturbative quasiparticle energies (Rydberg) ======" in line:
-				conversion=ryd2ev
+            elif "====== Perturbative quasiparticle energies (Hartree) ======" in line:
+                conversion=hrt2ev
+            elif "====== Perturbative quasiparticle energies (Rydberg) ======" in line:
+                conversion=ryd2ev
             elif dft and "S-C" in line and "S-X" in line:
                 entries=line.split()
                 dftlist.append(conversion*float(entries[7]))
