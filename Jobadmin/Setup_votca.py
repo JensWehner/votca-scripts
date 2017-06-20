@@ -154,7 +154,15 @@ class votcafolder(object):
 
 	def xqmmm(self):
 			name="xqmmm"
-			self.writeoptionfile(self.readoptionfile(name),name)
+			root=self.readoptionfile(name)
+			for entry in root.iter(name):		   
+				dftoptions=entry.find("package").text
+				shutil.copyfile(os.path.join(self.template,"OPTIONFILES/"+dftoptions),self.optfiles)
+				gwbse=entry.find("gwbse").text
+				gwbseoptions=gwbse.find("gwbse_options").text
+				shutil.copyfile(os.path.join(self.template,"OPTIONFILES/"+gwbseoptions),self.optfiles)
+				entry.find("job_file").text=os.path.join(self.path,jobfile)
+			self.writeoptionfile(root,name)
 			with cd(self.path):
 				print "Running xqmmm for {}".format(self.name)
 				sp.check_output("xtp_parallel -e {} -o OPTIONFILES/{}.xml -f {} -t 1 -c 1 -s 0 > xqmmm.log".format(name,name,os.path.basename(self.sql)),shell=True)
@@ -166,9 +174,9 @@ class votcafolder(object):
 			jobfile="egwbse.jobs"
 			root=self.readoptionfile(name)
 			for entry in root.iter(name):		   
-				dftoptions=entry.find("package").text
+				dftoptions=entry.find("dftpackage").text
 				shutil.copyfile(os.path.join(self.template,"OPTIONFILES/"+dftoptions),self.optfiles)
-				gwbseoptions=entry.find("gwbse").text
+				gwbseoptions=entry.find("gwbse_options").text
 				shutil.copyfile(os.path.join(self.template,"OPTIONFILES/"+gwbseoptions),self.optfiles)
 				entry.find("job_file").text=os.path.join(self.path,jobfile)
 				try:
@@ -390,9 +398,12 @@ if args.ewald:
 	bundle.ewald()
 if args.zmultipole:
 	bundle.zmultipole()
+if args.xqmmm:
+	bundle.xqmmm()
 if args.eanalyze:
 	bundle.eanalyze()
 if args.kmc:
 	bundle.kmc()
+
 	
 		
