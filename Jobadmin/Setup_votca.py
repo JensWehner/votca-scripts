@@ -190,8 +190,6 @@ class votcafolder(object):
 				sp.check_output("xtp_parallel -e {} -o OPTIONFILES/{}.xml -f {} -j write -s 0 > egwbse.log".format(name,name,os.path.basename(self.sql)),shell=True)
 
 		elif args.local:
-			 elif args.local:
-   
 			name="egwbselocal"
 			calcname="ewald"
 			self.writeoptionfile(self.readoptionfile(name,calcname=calcname),name)
