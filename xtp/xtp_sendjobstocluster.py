@@ -45,7 +45,15 @@ cache=int(root.find("cache").text)
 rsync=(root.find("rsync").text)
 numberofjobs=int(root.find("clusterjobs").text)
 workdir=root.find("workdir").text
+modules=root.find("modules").text
+source=root.find("source").text
 
+modules=modules.split()
+source=source.split()
+if len(source)==0:
+    source=None
+if len(modules)==0:
+    modules=None
 if rsync=="true" or rsync=="1" or rsync=="True":
     rsync=True
 elif rsync=="false" or rsync=="0" or rsync=="False":
@@ -103,7 +111,7 @@ if args.setup:
         else:
             execdir=currentdir
         command="xtp_parallel -e {} -o {} -f {} -s 0 -t {} -c {} > {}".format(calculator,optfile,sql,threads,cache,logfile)
-        write_cluster_batch(command,tag,outfile=subfile,outlog="{}.log".format(i),errlog="{}.err".format(i),queue=queue,procs=procs,module=["gaussian/g03","votca/git_cluster"],source="/sw/linux/gromacs/5.1.2/bin/GMXRC",execdir=execdir,rsync=rsync)
+        write_cluster_batch(command,tag,outfile=subfile,outlog="{}.log".format(i),errlog="{}.err".format(i),queue=queue,procs=procs,module=modules,source=source,execdir=execdir,rsync=rsync)
 
 if args.submit:
     for submitfile in submitfiles:

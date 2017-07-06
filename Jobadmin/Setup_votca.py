@@ -156,11 +156,11 @@ class votcafolder(object):
 			name="xqmmm"
 			root=self.readoptionfile(name)
 			for entry in root.iter(name):		   
-				dftoptions=entry.find("package").text
-				shutil.copyfile(os.path.join(self.template,"OPTIONFILES/"+dftoptions),self.optfiles)
+				dftoptions=entry.find("dftpackage").text
+				shutil.copyfile(os.path.join(self.template,dftoptions),os.path.join(self.path,dftoptions))
 				gwbse=entry.find("gwbse").text
 				gwbseoptions=gwbse.find("gwbse_options").text
-				shutil.copyfile(os.path.join(self.template,"OPTIONFILES/"+gwbseoptions),self.optfiles)
+				shutil.copyfile(os.path.join(self.template,gwbseoptions),os.path.join(self.path,gwbseoptions))
 				entry.find("job_file").text=os.path.join(self.path,jobfile)
 			self.writeoptionfile(root,name)
 			with cd(self.path):
@@ -175,13 +175,13 @@ class votcafolder(object):
 			root=self.readoptionfile(name)
 			for entry in root.iter(name):		   
 				dftoptions=entry.find("dftpackage").text
-				shutil.copyfile(os.path.join(self.template,"OPTIONFILES/"+dftoptions),self.optfiles)
+				shutil.copyfile(os.path.join(self.template,dftoptions),os.path.join(self.path,dftoptions))
 				gwbseoptions=entry.find("gwbse_options").text
-				shutil.copyfile(os.path.join(self.template,"OPTIONFILES/"+gwbseoptions),self.optfiles)
+				shutil.copyfile(os.path.join(self.template,gwbseoptions),os.path.join(self.path,gwbseoptions))
 				entry.find("job_file").text=os.path.join(self.path,jobfile)
 				try:
 					espoptions=entry.find("esp_options").text
-					shutil.copyfile(os.path.join(self.template,"OPTIONFILES/"+espoptions),self.optfiles)
+					shutil.copyfile(os.path.join(self.template,espoptions),os.path.join(self.path,espoptions))
 				except:
 					print "Running without espfits"
 			self.writeoptionfile(root,name)
@@ -191,7 +191,7 @@ class votcafolder(object):
 
 		elif args.local:
 			name="egwbselocal"
-			calcname="ewald"
+			calcname="egwbse"
 			self.writeoptionfile(self.readoptionfile(name,calcname=calcname),name)
 			with cd(self.path):
 				print "Running egwbse locally for {}".format(self.name)
@@ -353,6 +353,10 @@ class votcabundle(object):
 		for job in self.joblist:
 			job.ewald()
 
+	def egwbse(self):
+		for job in self.joblist:
+			job.egwbse()
+
 
 	def einternal(self):
 		for job in self.joblist:
@@ -394,6 +398,8 @@ if args.ianalyze:
 	bundle.ianalyze()
 if args.ewald:
 	bundle.ewald()
+if args.egwbse:
+	bundle.egwbse()
 if args.zmultipole:
 	bundle.zmultipole()
 if args.xqmmm:

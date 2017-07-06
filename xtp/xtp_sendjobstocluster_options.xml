@@ -1,15 +1,17 @@
 <options>
 
-<queue>PE_8</queue>
-<procs>8</procs>
-<tag>Alg3</tag>
+<queue>Standard_20</queue>
+<procs>20</procs>
+<tag>DCV5T</tag>
 <jobfile>egwbse.jobs</jobfile>
-<calculator>egwbse.jobs</calculator>
+<calculator>egwbse</calculator>
 <optfile>OPTIONFILES/egwbse.xml</optfile>
 <sqlfile>system.sql</sqlfile>
-<threads>4</threads>
-<cache>16</cache>
-<rsync>0</rsync>
-<clusterjobs>40</clusterjobs>
+<threads>5</threads>
+<cache>15</cache>
+<rsync>1</rsync>
+<clusterjobs>4</clusterjobs>
 <workdir>EGWBSE</workdir>
+<modules>votca/cluster gaussian/g09</modules>
+<source>/people/thnfs/homes/scherer/GROMACS/gromacs-5.1_cluster/bin/GMXRC</source>
 </options>
