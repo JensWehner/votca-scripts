@@ -115,8 +115,8 @@ if args.setup:
 
 if args.submit:
     for submitfile in submitfiles:
-        with cd(workdir):
-            sp.call("qsub {}".format(submitfile),shell=True) 
+        with cd(currentdir):
+            sp.call("qsub {}".format(os.path.join(workdir,submitfile)),shell=True) 
 
 if args.merge:
     mergejobfiles(jobfiles,jobfile)

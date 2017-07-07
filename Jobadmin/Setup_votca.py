@@ -67,7 +67,8 @@ class votcafolder(object):
 
 	def setupdir(self,tprfile):
 		os.mkdir(self.path)
-		sp.call("ln -s {}/MP_FILES {}/MP_FILES".format(self.template,self.path),shell=True)
+		os.mkdir(os.join.path(self.path,"MP_FILES")
+		sp.call("cp {}/MP_FILES/* {}/MP_FILES".format(self.template,self.path),shell=True)
 		sp.call("ln -s {}/QC_FILES {}/QC_FILES".format(self.template,self.path),shell=True)
 		os.mkdir(os.path.join(self.path,"MD_FILES"))
 		os.mkdir(self.optfiles)
