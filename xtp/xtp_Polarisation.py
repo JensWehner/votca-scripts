@@ -161,7 +161,7 @@ class job(object):
             self.energybse=(results[5][state-1])/27.211385
         self.energydft=results[0][2]/27.211385
         self.energy=self.energybse+self.energydft
-        print "{}\t DFT Energy[Ryd]: {:1.5f}\t BSE Energy {} [Ryd]: {:1.5f}\t Total [Ryd]: {:1.5f}".format(self.identifier,self.energydft,tag,self.energybse,self.energy)
+        print "{}\t DFT Energy[Hartree]: {:1.5f}\t BSE Energy {} [Hartree]: {:1.5f}\t Total [Hartree]: {:1.5f}".format(self.identifier,self.energydft,tag,self.energybse,self.energy)
  
    
 

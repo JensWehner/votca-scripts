@@ -7,6 +7,19 @@ ryd2ev=13.605692
 hrt2ev=2*ryd2ev
    
 
+def readoscillatorstrength(filename):
+	fs=[]
+	sbool=False
+	with open(filename,"r") as f:
+		for line in f.readlines():
+			if "====== singlet energies (eV) ======" in line:
+				sbool=True
+			elif sbool and "TrDipole length gauge" in line:
+				fs.append(float(line.split()[-1]))
+
+	return np.array(fs)
+			
+
 def readexcitonlogfile(filename,dft=False,qp=False,singlets=False,triplets=False):
 	dftlist=[]
 	gwa=[]
