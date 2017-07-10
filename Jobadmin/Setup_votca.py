@@ -41,6 +41,7 @@ parser.add_argument("--write",action='store_const', const=1, default=0,help="Wri
 parser.add_argument("--read",action='store_const', const=1, default=0,help="Read jobfile")
 parser.add_argument("--kmc", action='store_const', const=1, default=0,help="Run kmc")
 parser.add_argument("--egwbse", action='store_const', const=1, default=0,help="Run egwbse")
+parser.add_argument("--igwbse", action='store_const', const=1, default=0,help="Run igwbse")
 parser.add_argument("--kmcjobfile", type=str,default="jobset.csv",help=".csv File in which the kmc jobs are stored")
 parser.add_argument("--tprfile", default="topol.tpr",help="Name of tpr file. Default=topol.tpr")
 
@@ -67,7 +68,7 @@ class votcafolder(object):
 
 	def setupdir(self,tprfile):
 		os.mkdir(self.path)
-		os.mkdir(os.join.path(self.path,"MP_FILES")
+		os.mkdir(os.join.path(self.path,"MP_FILES"))
 		sp.call("cp {}/MP_FILES/* {}/MP_FILES".format(self.template,self.path),shell=True)
 		sp.call("ln -s {}/QC_FILES {}/QC_FILES".format(self.template,self.path),shell=True)
 		os.mkdir(os.path.join(self.path,"MD_FILES"))
@@ -205,6 +206,43 @@ class votcafolder(object):
 			with cd(self.path):
 				print "Running egwbse to read jobfile {} for {}".format(jobfile,self.name)
 				sp.check_output("xtp_parallel -e {} -o OPTIONFILES/{}.xml -f {} -j read >> egwbse.log".format(name,name,os.path.basename(self.sql)),shell=True)
+
+
+
+	def igwbse(self):
+
+		if args.write:
+			name="igwbse"
+			jobfile="igwbse.jobs"
+			root=self.readoptionfile(name)
+			for entry in root.iter(name):		   
+				dftoptions=entry.find("dftpackage").text
+				shutil.copyfile(os.path.join(self.template,dftoptions),os.path.join(self.path,dftoptions))
+				gwbseoptions=entry.find("gwbse_options").text
+				shutil.copyfile(os.path.join(self.template,gwbseoptions),os.path.join(self.path,gwbseoptions))
+				couplingoptions=entry.find("bsecoupling_options").text
+				shutil.copyfile(os.path.join(self.template,couplingoptions),os.path.join(self.path,couplingoptions))
+				entry.find("job_file").text=os.path.join(self.path,jobfile)
+			self.writeoptionfile(root,name)
+			with cd(self.path):
+				print "Running igwbse to write jobfile {} for {}".format(jobfile,self.name)
+				sp.check_output("xtp_parallel -e {} -o OPTIONFILES/{}.xml -f {} -j write -s 0 > igwbse.log".format(name,name,os.path.basename(self.sql)),shell=True)
+
+		elif args.local:
+			name="igwbselocal"
+			calcname="igwbse"
+			self.writeoptionfile(self.readoptionfile(name,calcname=calcname),name)
+			with cd(self.path):
+				print "Running igwbse locally for {}".format(self.name)
+				sp.call("xtp_parallel -e gwbse -o OPTIONFILES/{}.xml -f {} -s 0 -t 1 -c 4 > igwbselocal.log".format(name,os.path.basename(self.sql)),shell=True)
+
+
+		elif args.read:
+			name="igwbse"
+			jobfile="igwbse.jobs"
+			with cd(self.path):
+				print "Running igwbse to read jobfile {} for {}".format(jobfile,self.name)
+				sp.check_output("xtp_parallel -e {} -o OPTIONFILES/{}.xml -f {} -j read >> igwbse.log".format(name,name,os.path.basename(self.sql)),shell=True)
 			
 
 	def ewald(self):
@@ -358,6 +396,10 @@ class votcabundle(object):
 		for job in self.joblist:
 			job.egwbse()
 
+	def igwbse(self):
+		for job in self.joblist:
+			job.igwbse()
+
 
 	def einternal(self):
 		for job in self.joblist:
@@ -401,6 +443,8 @@ if args.ewald:
 	bundle.ewald()
 if args.egwbse:
 	bundle.egwbse()
+if args.igwbse:
+	bundle.igwbse()
 if args.zmultipole:
 	bundle.zmultipole()
 if args.xqmmm:
