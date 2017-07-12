@@ -118,6 +118,35 @@ def readctstatepops(filename,excitontype="singlet"):
 				
 	result=np.array([fragA,fragB])
 	return result
+
+def readctstatedist(filename,excitontype="singlet"):
+	hole=[]
+	electron=[]
+	frag=False
+	tbool=False
+	add=0
+	namestring=""
+	if excitontype=="singlet":
+		namestring="S ="
+	elif excitontype=="triplet":
+		namestring="T ="
+	else:
+		print "ERROR: String {} not known for readctstatepops".format(excitonstring)
+		sys.exit()
+	with open(filename,"r") as f:
+		for line in f.readlines():
+			if "GWBSE" in line and ( "DBG" in line or "INF" in line):
+				add=1
+			if "====== {} energies (eV) ======".format(excitontype) in line:
+				tbool=True
+			elif tbool and namestring in line:
+				frag=True
+			elif tbool and frag and "Fragment A" in line:
+				hole.append(float(line.split()[6+add].strip("%")))
+				electron.append(float(line.split()[8+add].strip("%")))
+				
+	result=np.array([hole,electron])
+	return result
 			
 
 def getcouplingfromsplit(filename,states):
