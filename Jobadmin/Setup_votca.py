@@ -400,6 +400,10 @@ class votcabundle(object):
 		for job in self.joblist:
 			job.ianalyze()
 
+	def stateserver(self):
+		for job in self.joblist:
+			job.stateserver()	
+
 	def ewald(self):
 		for job in self.joblist:
 			job.ewald()
