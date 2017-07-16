@@ -42,6 +42,7 @@ parser.add_argument("--read",action='store_const', const=1, default=0,help="Read
 parser.add_argument("--kmc", action='store_const', const=1, default=0,help="Run kmc")
 parser.add_argument("--egwbse", action='store_const', const=1, default=0,help="Run egwbse")
 parser.add_argument("--igwbse", action='store_const', const=1, default=0,help="Run igwbse")
+parser.add_argument("--stateserver", action='store_const', const=1, default=0,help="Run stateserver")
 parser.add_argument("--kmcjobfile", type=str,default="jobset.csv",help=".csv File in which the kmc jobs are stored")
 parser.add_argument("--tprfile", default="topol.tpr",help="Name of tpr file. Default=topol.tpr")
 
@@ -120,25 +121,28 @@ class votcafolder(object):
 			sp.check_output("xtp_run -e {} -o OPTIONFILES/{}.xml -f {}".format(name,name,os.path.basename(self.sql)),shell=True,stderr=sp.STDOUT)
 
 	def iexcitoncl(self):	   
-		name="stateserver"
-		self.writeoptionfile(self.readoptionfile(name),name)
-		with cd(self.path):
-			print "Creating mps.tab file for {}".format(self.name)
-			sp.call("xtp_run -e {} -o OPTIONFILES/{}.xml -f {} -s 0 > stateserver.log".format(name,name,os.path.basename(self.sql)),shell=True,stderr=sp.STDOUT)
 		name="iexcitoncl"
 		jobfile=os.path.join(self.path,"{}.jobs.iexcitoncl".format(name))
 		mpsfile=os.path.join(self.path,"mps.tab".format(name))
-		root=self.readoptionfile(name)
-		for entry in root.iter(name):		   
-			entry.find("mapping").text=self.map
-			entry.find("emp_file").text=mpsfile
-			entry.find("job_file").text=jobfile
-		self.writeoptionfile(root,name)
-		with cd(self.path):
-			print "Running iexcitoncl for {}".format(self.name)
-			sp.check_output("xtp_parallel -e {} -o  OPTIONFILES/{}.xml -f {} -j write -s 0 > iexcitoncl.log".format(name,name,os.path.basename(self.sql)),shell=True,stderr=sp.STDOUT)
-			sp.check_output("xtp_parallel -e {} -o  OPTIONFILES/{}.xml -f {} -j run -c 20000 -t 4 -s 0 >> iexcitoncl.log".format(name,name,os.path.basename(self.sql)),shell=True,stderr=sp.STDOUT)
-			sp.check_output("xtp_parallel -e {} -o  OPTIONFILES/{}.xml -f {} -j read >> iexcitoncl.log".format(name,name,os.path.basename(self.sql)),shell=True,stderr=sp.STDOUT)
+		
+		if args.write:
+			root=self.readoptionfile(name)
+			for entry in root.iter(name):		   
+				entry.find("mapping").text=self.map
+				entry.find("emp_file").text=mpsfile
+				entry.find("job_file").text=jobfile
+			self.writeoptionfile(root,name)
+			with cd(self.path):
+				print "Writing iexcitoncl jobfile for {}".format(self.name)
+				sp.check_output("xtp_parallel -e {} -o  OPTIONFILES/{}.xml -f {} -j write -s 0 > iexcitoncl.log".format(name,name,os.path.basename(self.sql)),shell=True,stderr=sp.STDOUT)
+		if args.local:	
+			with cd(self.path):
+				print "Running iexcitoncl locally for {}".format(self.name)		
+				sp.check_output("xtp_parallel -e {} -o  OPTIONFILES/{}.xml -f {} -j run -c 20000 -t 4 -s 0 >> iexcitoncl.log".format(name,name,os.path.basename(self.sql)),shell=True,stderr=sp.STDOUT)
+		if args.read:
+			with cd(self.path):
+				print "Reading iexcitoncl jobfile for {}".format(self.name)		
+				sp.check_output("xtp_parallel -e {} -o  OPTIONFILES/{}.xml -f {} -j read >> iexcitoncl.log".format(name,name,os.path.basename(self.sql)),shell=True,stderr=sp.STDOUT)
 
 	def ianalyze(self):
 		name="xianalyze"
@@ -168,6 +172,14 @@ class votcafolder(object):
 			with cd(self.path):
 				print "Running xqmmm for {}".format(self.name)
 				sp.check_output("xtp_parallel -e {} -o OPTIONFILES/{}.xml -f {} -t 1 -c 1 -s 0 > xqmmm.log".format(name,name,os.path.basename(self.sql)),shell=True)
+
+	def stateserver(self):
+		name="stateserver"
+		self.writeoptionfile(self.readoptionfile(name),name)
+		with cd(self.path):
+			print "Creating mps.tab file for {}".format(self.name)
+			sp.call("xtp_run -e {} -o OPTIONFILES/{}.xml -f {} -s 0 > stateserver.log".format(name,name,os.path.basename(self.sql)),shell=True,stderr=sp.STDOUT)
+	
 
 	def egwbse(self):
 
@@ -431,6 +443,8 @@ if args.map:
 	bundle.mapjobs()
 if args.neighbourlist:
 	bundle.neighborlists()
+if args.stateserver:
+	bundle.stateserver()
 if args.einternal:
 	bundle.einternal()
 if args.iexcitoncl:
