@@ -122,7 +122,7 @@ class votcafolder(object):
 
 	def iexcitoncl(self):	   
 		name="iexcitoncl"
-		jobfile=os.path.join(self.path,"{}.jobs.iexcitoncl".format(name))
+		jobfile=os.path.join(self.path,"{}.jobs".format(name))
 		mpsfile=os.path.join(self.path,"mps.tab".format(name))
 		
 		if args.write:
