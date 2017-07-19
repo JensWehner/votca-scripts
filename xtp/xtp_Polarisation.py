@@ -98,12 +98,13 @@ class job(object):
         copyfromtemplate(self.foldername)
         root=XmlParser("{}/exciton.xml".format(self.foldername))
         exciton=root.find("exciton")
-        exciton.find("tasks").text="input"
+	gwbseengine=exciton.find("gwbse_engine")
+        gwbseengine.find("tasks").text="input"
         XmlWriter(root,"{}/exciton.xml".format(self.foldername))
         with cd(self.foldername):
             sp.call("xtp_tools -e exciton -o exciton.xml > exciton.log",shell=True)
             self.modcomfile("system.com")
-        exciton.find("tasks").text="dft,parse,gwbse"
+        gwbseengine.find("tasks").text="dft,parse,gwbse"
         XmlWriter(root,"{}/exciton.xml".format(self.foldername))
         
         
