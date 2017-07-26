@@ -102,7 +102,15 @@ if args.setup:
 	splittjobfile(jobfile,jobfiles)
 	for i,optfile,jfile,subfile,logfile,tag in zip(rangejobs,optionfiles,jobfiles,submitfiles,logfiles,tags):
 		root=lxml.Element("options")
-		options.find("job_file").text=jfile
+		if options.find("job_file")!=None:
+			options.find("job_file").text=jfile
+		elif options.find("jobcontrol")!=None:
+			jobcontrol=options.find("jobcontrol");
+			jobcontrol.find("job_file").text=jfile
+		else:
+			print "Could not find a jobfile in xml options file. Exiting..."
+			sys.exit()
+			
 		root.append(options)
 		XmlWriter(root,optfile)
 		
