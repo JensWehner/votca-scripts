@@ -132,6 +132,7 @@ if args.submit:
 			sp.call("qsub {}".format(os.path.join(workdir,submitfile)),shell=True) 
 
 if args.merge:
+	"Merging files into {}".format(jobfile)
 	mergejobfiles(jobfiles,jobfile)
 
 if args.info:

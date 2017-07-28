@@ -126,9 +126,9 @@ class jobcollection(object):
                     state=-1
                 elif statestring=="h" or statestring=="1":
                     state=1
-                elif statestring=="s" or statestring=="2":
+                elif statestring[0]=="s" or statestring=="2":
                     state=2
-                elif statestring=="t" or statestring=="3":
+                elif statestring[0]=="t" or statestring=="3":
                     state=3
                 else:
                     print "The state of your charge {} at job {} is unknown. Exiting....".format(statestring,jobid)
