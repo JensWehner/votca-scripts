@@ -48,6 +48,11 @@ workdir=root.find("workdir").text
 modules=root.find("modules").text
 source=root.find("source").text
 
+if(root.find("xml_optionstring")!=None):
+	optionstring=root.find("xml_optionstring").text
+else:
+	optionstring=calculator
+
 modules=modules.split()
 source=source.split()
 if len(source)==0:
@@ -61,7 +66,7 @@ elif rsync=="false" or rsync=="0" or rsync=="False":
 
 
 
-options=XmlParser(optionfile,entry=calculator)
+options=XmlParser(optionfile,entry=optionstring)
 jobfiles=[]
 optionfiles=[]
 submitfiles=[]
