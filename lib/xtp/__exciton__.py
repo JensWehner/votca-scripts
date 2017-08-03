@@ -2,30 +2,41 @@ import numpy as np
 import lxml.etree as lxml
 import datetime
 import sys
+from __tools__ import XmlParser
+from __xtpMolecule__ import *
 
 ryd2ev=13.605692
 hrt2ev=2*ryd2ev
    
 
-def readoscillatorstrength(filename):
-	fs=[]
-	sbool=False
-	with open(filename,"r") as f:
-		for line in f.readlines():
-			if "====== singlet energies (eV) ======" in line:
-				sbool=True
-			elif sbool and "TrDipole length gauge" in line:
-				fs.append(float(line.split()[-1]))
+def appendarrayorNone(datalist):
+	if len(datalist)==0:
+		return None
+	else:
+		for element in datalist:
+			if len(element)==0:
+				return None
+		return np.array(datalist)
 
-	return np.array(fs)
 			
 
-def readexcitonlogfile(filename,dft=False,qp=False,singlets=False,triplets=False):
+def readexcitonlogfile(filename):
 	dftlist=[]
 	gwa=[]
 	qp=[]
 	s=[]
 	t=[]
+	fs=[]
+	levelid=[]
+	levelidqp=[]
+	fragAS=[]
+	fragBS=[]
+	fragAT=[]
+	fragBT=[]
+	holeS=[]
+	electronS=[]
+	holeT=[]
+	electronT=[]
 	homo=None
 	lumo=None
 	tbool=False
@@ -45,7 +56,8 @@ def readexcitonlogfile(filename,dft=False,qp=False,singlets=False,triplets=False
 				conversion=ryd2ev
 			elif dft and "S-C" in line and "S-X" in line:
 				entries=line.split()
-				dftlist.append(conversion*float(entries[7]))
+				levelid.append(int(entries[4+add])-1)
+				dftlist.append(conversion*float(entries[7+add]))
 				gwa.append(conversion*float(entries[-1]))
 				if "HOMO"==entries[2+add] and homo==None:
 					homo=int(entries[4+add])-1
@@ -56,97 +68,44 @@ def readexcitonlogfile(filename,dft=False,qp=False,singlets=False,triplets=False
 			elif "====== Diagonalized quasiparticle energies" in line:
 				qpbool=True
 			elif qpbool and qp and "PQP" in line and "DQP" in line:
+				levelidqp.append(int(line.split()[4+add]))
 				qp.append(conversion*float(line.split()[-1]))
 			elif "====== triplet energies (eV) ======" in line:
 				tbool=True
 			elif tbool and triplets and "T =" in line:
 				t.append(float(line.split()[7+add]))
+			elif tbool and "Fragment A" in line:
+				tok=line.split()
+				fragAT.append(float(tok[12+add]))
+				holeT.append(float(tok[6+add].strip("%")))
+				electronT.append(float(tok[8+add].strip("%")))
+			elif tbool and "Fragment B" in line:
+				fragBT.append(float(line.split()[12+add]))
 			elif "====== singlet energies (eV) ======" in line:
 				sbool=True
 			elif sbool and singlets and "S =" in line:
 				s.append(float(line.split()[7+add]))
-	results=[]
-	if dft:
-		results.append([homo,lumo,dftenergy])
-		results.append(np.array(dftlist))
-		results.append(np.array(gwa))
-	else:
-		results.append(None)
-		results.append(None)
-		results.append(None)
-	if qp:
-		results.append(np.array(qp))
-	else:
-		results.append(None)
-	if singlets:
-		results.append(np.array(s))
-	else:
-		results.append(None)
-	if triplets:
-		results.append(np.array(t))
-	else:
-		results.append(None)
-	#print results
+			elif sbool and "TrDipole length gauge" in line:
+				fs.append(float(line.split()[-1]))
+			elif sbool and "Fragment A" in line:
+				tok=line.split()
+				fragAS.append(float(tok[12+add]))
+				holeS.append(float(tok[6+add].strip("%")))
+				electronS.append(float(tok[8+add].strip("%")))
+			elif sbool and "Fragment B" in line:
+				fragBS.append(float(line.split()[12+add]))
+	results=molecule()
+	results.addHomoLumo(homo,lumo)
+	results.addEgroundstate(dftenergy)
+	results.addDFTenergies(appendarrayorNone([levelid,dftlist,gwalist])
+	results.addQPenergies(appendarrayorNone(qp))
+	results.addSinglets(appendarrayorNone(s),appendarrayorNone(fs))
+	results.addTriplets(appendarrayorNone(t))
+	results.addFragmentsSinglet(appendarrayorNone([fragAS,fragBS]),appendarrayorNone([holeS,electronS]))
+	results.addFragmentsTriplet(appendarrayorNone([fragAT,fragBT]),appendarrayorNone([holeT,electronT]))
 	return results
 
-def readctstatepops(filename,excitontype="singlet"):
-	fragA=[]
-	fragB=[]
-	frag=False
-	tbool=False
-	add=0
-	namestring=""
-	if excitontype=="singlet":
-		namestring="S ="
-	elif excitontype=="triplet":
-		namestring="T ="
-	else:
-		print "ERROR: String {} not known for readctstatepops".format(excitonstring)
-		sys.exit()
-	with open(filename,"r") as f:
-		for line in f.readlines():
-			if "GWBSE" in line and ( "DBG" in line or "INF" in line):
-				add=1
-			if "====== {} energies (eV) ======".format(excitontype) in line:
-				tbool=True
-			elif tbool and namestring in line:
-				frag=True
-			elif tbool and frag and "Fragment A" in line:
-				fragA.append(float(line.split()[12+add]))
-			elif tbool and frag and "Fragment B" in line:
-				fragB.append(float(line.split()[12+add]))
-				
-	result=np.array([fragA,fragB])
-	return result
 
-def readctstatedist(filename,excitontype="singlet"):
-	hole=[]
-	electron=[]
-	frag=False
-	tbool=False
-	add=0
-	namestring=""
-	if excitontype=="singlet":
-		namestring="S ="
-	elif excitontype=="triplet":
-		namestring="T ="
-	else:
-		print "ERROR: String {} not known for readctstatepops".format(excitonstring)
-		sys.exit()
-	with open(filename,"r") as f:
-		for line in f.readlines():
-			if "GWBSE" in line and ( "DBG" in line or "INF" in line):
-				add=1
-			if "====== {} energies (eV) ======".format(excitontype) in line:
-				tbool=True
-			elif tbool and namestring in line:
-				frag=True
-			elif tbool and frag and "Fragment A" in line:
-				hole.append(float(line.split()[6+add].strip("%")))
-				electron.append(float(line.split()[8+add].strip("%")))
-				
-	result=np.array([hole,electron])
-	return result
 			
 
 def getcouplingfromsplit(filename,states):
@@ -195,9 +154,7 @@ def getcouplingfromsplit(filename,states):
 	return coupling
 
 def readcouplingxml(filename):
-	parser=lxml.XMLParser(remove_comments=True)
-	tree=lxml.parse(filename,parser)
-	root=tree.getroot()
+	root=XmlParser(filename)
 	Je=[]
 	Jh=[]
 	
@@ -213,10 +170,88 @@ def readcouplingxml(filename):
 				Jh.append((float(overlap.text)))
 	return [Je,Jh]
 
+
+def readexcitonxml(filename):
+	root=XmlParser(filename)
+	return readexcitonxml_molecule(root)
+
+
+
+
+
+def readexcitonxml_egwbse(filename):
+	results=[]
+	root=XmlParser(filename)
+	for job in root.iter('job'):
+		output=job.find("output")
+		segment=output.find("segment")
+		gwbse=segment.find("GWBSE")
+		mol=readexcitonxml_molecule(gwbse)
+		mol.setId(int(segment.get("id")))
+		mol.setName(segment.get("type")
+		results.append(mol)
+	return results
+
+
+
+def readexcitonxml_molecule(root):
+	dftlist=[]
+	gwa=[]
+	qp=[]
+	s=[]
+	t=[]
+	fs=[]
+	fragAS=[]
+	fragBS=[]
+	fragAT=[]
+	fragBT=[]
+	holeS=[]
+	electronS=[]
+	levelid=[]
+	levelidqp=[]
+	holeT=[]
+	electronT=[]
+	homo=None
+	lumo=None
+	tbool=False
+	sbool=False
+	qpbool=False
+	dftenergy=float(root.get("DFTEnergy"))
+	dft=root.find("dft")
+	homo=int(dft.get("HOMO"))
+	lumo=int(dft.get("LUMO"))
+	for level in dft.iter('level'):
+		lid=int(level.get("number"))
+		levelid.append(lid)
+		levelidqp.append(lid)
+		dftlist.append(float((level.find("dft_energy")).text))
+		gwa.append(float((level.find("gw_energy")).text))
+		if level.find("qp_energy")!=None:
+			qp.append(float((level.find("qp_energy")).text))
+	singlets=root.find("singlets")
+	if singlets!=None:
+		for level in singlets.iter('level'):
+			s.append(float((level.find("omega")).text))
+			fs.append(float((level.find("f")).text))
+	triplets=root.find("triplets")
+	if triplets!=None:
+		for level in triplets.iter('level'):
+			t.append(float((level.find("omega")).text))
+	
+	results=molecule()
+	results.addHomoLumo(homo,lumo)
+	results.addEgroundstate(dftenergy)
+	results.addDFTenergies(appendarrayorNone(dftlist)
+	results.addGWAenergies(appendarrayorNone(gwa))
+	results.addQPenergies(appendarrayorNone(qp))
+	results.addSinglets(appendarrayorNone(s),appendarrayorNone(fs))
+	results.addTriplets(appendarrayorNone(t))
+	results.addFragmentsSinglet(appendarrayorNone([fragAS,fragBS]),appendarrayorNone([holeS,electronS]))
+	results.addFragmentsTriplet(appendarrayorNone([fragAT,fragBT]),appendarrayorNone([holeT,electronT]))
+	return results
+
 def readexcitoncouplingxml(filename,states):
-	parser=lxml.XMLParser(remove_comments=True)
-	tree=lxml.parse(filename,parser)
-	root=tree.getroot()
+	root=XmlParser(filename)
 	resultlist=[]
 	for pair in root:
 		types=pair[0]
@@ -242,9 +277,7 @@ def readexcitoncouplingxml(filename,states):
 	return resultlist
 
 def readexcitoncoulingclassical(filename):
-	parser=lxml.XMLParser(remove_comments=True)
-	tree=lxml.parse(filename,parser)
-	root=tree.getroot()
+	root=XmlParser(filename)
 	results=[]
 	for pair in root:
 		Coupling=pair[0]		
