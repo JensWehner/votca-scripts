@@ -272,13 +272,13 @@ class votcafolder(object):
 			with cd(self.path):
 				print "Running xjobwriter for ewald for {}".format(self.name)
 				sp.check_output("xtp_run -e {} -o OPTIONFILES/{}.xml -f {} -s 0 > jobwriter.log".format(name,name,os.path.basename(self.sql)),shell=True)
-				sp.call("mv xjobwriter.mps.chrg.xml jobs.ewald.xml",shell=True)
+				sp.call("mv xjobwriter.mps.chrg.xml ewald.jobs",shell=True)
 
 		elif args.read:
 			name="ewaldparser"
 			with cd(self.path):
 				print "Running ewaldparser for ewald for {}".format(self.name)
-				sp.call("xtp_parseewald.py -j APE_ISO/WORKGROUND/jobs.*.xml~ -f {}".format(os.path.basename(self.sql)),shell=True)
+				sp.call("xtp_parseewald.py -j ewald.jobs -f {}".format(os.path.basename(self.sql)),shell=True)
 
 		elif args.local:
    
@@ -288,7 +288,7 @@ class votcafolder(object):
 			with cd(self.path):
 				print "Running ewald locally for {}".format(self.name)
 				sp.call("xtp_parallel -e pewald3d -o OPTIONFILES/{}.xml -f {} -s 0 -t 4 -c 128 > ewaldlocal.log".format(name,os.path.basename(self.sql)),shell=True)
-				sp.call("xtp_parseewald.py -j  jobs.ewald.xml  -f {}".format(os.path.basename(self.sql)),shell=True)
+				sp.call("xtp_parseewald.py -j ewald.jobs -f {}".format(os.path.basename(self.sql)),shell=True)
 
 	def eanalyze(self):
 		name="xeanalyze"
