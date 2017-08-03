@@ -10,13 +10,17 @@ hrt2ev=2*ryd2ev
    
 
 def appendarrayorNone(datalist):
-	if len(datalist)==0:
-		return None
+
+	if type(datalist)==list:
+		if len(datalist)==0:
+			return None
+		else:
+			for element in datalist:
+				if type(element)==list and len(element)==0:
+					return None
+			return np.array(datalist)
 	else:
-		for element in datalist:
-			if len(element)==0:
-				return None
-		return np.array(datalist)
+		return None
 
 			
 
@@ -36,6 +40,7 @@ def readexcitonlogfile(filename):
 	holeS=[]
 	electronS=[]
 	holeT=[]
+	TrDip=[]
 	electronT=[]
 	homo=None
 	lumo=None
@@ -86,7 +91,12 @@ def readexcitonlogfile(filename):
 			elif sbool and singlets and "S =" in line:
 				s.append(float(line.split()[7+add]))
 			elif sbool and "TrDipole length gauge" in line:
-				fs.append(float(line.split()[-1]))
+				tok=line.split()
+				fs.append(float(tok[-1]))
+				x=float(tok[7+add])
+				y=float(tok[10+add])
+				z=float(tok[13+add])
+				TrDip.append(np.array([x,y,z]))
 			elif sbool and "Fragment A" in line:
 				tok=line.split()
 				fragAS.append(float(tok[12+add]))
@@ -97,9 +107,9 @@ def readexcitonlogfile(filename):
 	results=molecule()
 	results.addHomoLumo(homo,lumo)
 	results.addEgroundstate(dftenergy)
-	results.addDFTenergies(appendarrayorNone([levelid,dftlist,gwalist])
-	results.addQPenergies(appendarrayorNone(qp))
-	results.addSinglets(appendarrayorNone(s),appendarrayorNone(fs))
+	results.addDFTenergies(appendarrayorNone([levelid,dftlist,gwa]))
+	results.addQPenergies(appendarrayorNone([levelidqp,qp]))
+	results.addSinglets(appendarrayorNone(s),appendarrayorNone(fs),appendarrayorNone(TrDip))
 	results.addTriplets(appendarrayorNone(t))
 	results.addFragmentsSinglet(appendarrayorNone([fragAS,fragBS]),appendarrayorNone([holeS,electronS]))
 	results.addFragmentsTriplet(appendarrayorNone([fragAT,fragBT]),appendarrayorNone([holeT,electronT]))
@@ -177,8 +187,6 @@ def readexcitonxml(filename):
 
 
 
-
-
 def readexcitonxml_egwbse(filename):
 	results=[]
 	root=XmlParser(filename)
@@ -188,7 +196,7 @@ def readexcitonxml_egwbse(filename):
 		gwbse=segment.find("GWBSE")
 		mol=readexcitonxml_molecule(gwbse)
 		mol.setId(int(segment.get("id")))
-		mol.setName(segment.get("type")
+		mol.setName(segment.get("type"))
 		results.append(mol)
 	return results
 
@@ -201,6 +209,7 @@ def readexcitonxml_molecule(root):
 	s=[]
 	t=[]
 	fs=[]
+	TrDip=[]
 	fragAS=[]
 	fragBS=[]
 	fragAT=[]
@@ -233,18 +242,19 @@ def readexcitonxml_molecule(root):
 		for level in singlets.iter('level'):
 			s.append(float((level.find("omega")).text))
 			fs.append(float((level.find("f")).text))
+			dipole=(level.find("Trdipole")).text
+			TrDip.append(np.array(dipole.split(),dtype=float))
+
 	triplets=root.find("triplets")
 	if triplets!=None:
 		for level in triplets.iter('level'):
 			t.append(float((level.find("omega")).text))
-	
 	results=molecule()
 	results.addHomoLumo(homo,lumo)
 	results.addEgroundstate(dftenergy)
-	results.addDFTenergies(appendarrayorNone(dftlist)
-	results.addGWAenergies(appendarrayorNone(gwa))
-	results.addQPenergies(appendarrayorNone(qp))
-	results.addSinglets(appendarrayorNone(s),appendarrayorNone(fs))
+	results.addDFTenergies(appendarrayorNone([levelid,dftlist,gwa]))
+	results.addQPenergies(appendarrayorNone([levelidqp,qp]))
+	results.addSinglets(appendarrayorNone(s),appendarrayorNone(fs),appendarrayorNone(TrDip))
 	results.addTriplets(appendarrayorNone(t))
 	results.addFragmentsSinglet(appendarrayorNone([fragAS,fragBS]),appendarrayorNone([holeS,electronS]))
 	results.addFragmentsTriplet(appendarrayorNone([fragAT,fragBT]),appendarrayorNone([holeT,electronT]))

@@ -17,6 +17,7 @@ class molecule:
 		self.Singlets=None
 		self.Triplets=None
 		self.osc=None
+		self.TrDip=None
 		self.TripletCTpop=None
 		self.SingletCTpop=None
 		self.SingletCharge=None
@@ -41,38 +42,39 @@ class molecule:
 		newMol.calccoG()	
 		return newMol
 
-	def setName(name):
+	def setName(self,name):
 		self.name=name
 
-	def setId(molid):
+	def setId(self,molid):
 		self.id=molid
 
-	def addHomoLumo(homo,lumo):
+	def addHomoLumo(self,homo,lumo):
 		self.homo=homo
 		self.lumo=lumo
 	
-	def addEgroundstate(E):
+	def addEgroundstate(self,E):
 		self.Egroundstate=E
 
 
-	def addDFTenergies(energies):
+	def addDFTenergies(self,energies):
 		self.dftenergies=energies
 
 
-	def addQPenergies(energies):
+	def addQPenergies(self,energies):
 		self.QPenergies=energies
 	
-	def addSinglets(energies,osc):
+	def addSinglets(self,energies,osc,Trdip):
 		self.Singlets=energies
 		self.osc=osc
+		self.TrDip=Trdip
 
-	def addTriplets(energies):
+	def addTriplets(self,energies):
 		self.Triplets=energies
 
-	def addFragmentsSinglet(CTpop,charge):
+	def addFragmentsSinglet(self,CTpop,charge):
 		self.SingletCTpop=CTpop
 		self.SingletCharge=charge
-	def addFragmentsTriplet(CTpop,charge):
+	def addFragmentsTriplet(self,CTpop,charge):
 		self.TripletCTpop=CTpop
 		self.TripletCharge=charge
 	
