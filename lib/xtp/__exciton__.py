@@ -44,6 +44,7 @@ def readexcitonlogfile(filename):
 	electronT=[]
 	homo=None
 	lumo=None
+	dft=False
 	tbool=False
 	sbool=False
 	qpbool=False
@@ -57,8 +58,10 @@ def readexcitonlogfile(filename):
 				dftenergy=float(line.split()[-1])
 			elif "====== Perturbative quasiparticle energies (Hartree) ======" in line:
 				conversion=hrt2ev
+				dft=True
 			elif "====== Perturbative quasiparticle energies (Rydberg) ======" in line:
 				conversion=ryd2ev
+				dft=True
 			elif dft and "S-C" in line and "S-X" in line:
 				entries=line.split()
 				levelid.append(int(entries[4+add])-1)
@@ -77,7 +80,7 @@ def readexcitonlogfile(filename):
 				qp.append(conversion*float(line.split()[-1]))
 			elif "====== triplet energies (eV) ======" in line:
 				tbool=True
-			elif tbool and triplets and "T =" in line:
+			elif tbool and "T =" in line:
 				t.append(float(line.split()[7+add]))
 			elif tbool and "Fragment A" in line:
 				tok=line.split()
@@ -88,7 +91,7 @@ def readexcitonlogfile(filename):
 				fragBT.append(float(line.split()[12+add]))
 			elif "====== singlet energies (eV) ======" in line:
 				sbool=True
-			elif sbool and singlets and "S =" in line:
+			elif sbool and "S =" in line:
 				s.append(float(line.split()[7+add]))
 			elif sbool and "TrDipole length gauge" in line:
 				tok=line.split()
