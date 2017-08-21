@@ -23,7 +23,11 @@ class molecule:
 		self.SingletCharge=None
 		self.TripletCharge=None
 
-		
+	def getEnergy(self,level):
+		index=np.where(self.DFTenergies[0]==level)
+		energy=self.DFTenergies.T[index][0][1:]
+		return energy
+
 
 	def calccoG(self):
 			
@@ -57,7 +61,7 @@ class molecule:
 
 
 	def addDFTenergies(self,energies):
-		self.dftenergies=energies
+		self.DFTenergies=energies
 
 
 	def addQPenergies(self,energies):
