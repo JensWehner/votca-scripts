@@ -22,7 +22,9 @@ args=parser.parse_args()
 def IntegrateJobfile(doneroot,openroot):
     for entry1 in openroot.iter('job'):
         inputs1=entry1.find("input")
-        status=entry1.find("status")
+        status1=entry1.find("status")
+        if status1.text=="COMPLETE:
+	    continue
         for i,j in enumerate(inputs1.iter("segment")):
             if i==0:
                 seg1_1=(int(j.text))
@@ -33,6 +35,9 @@ def IntegrateJobfile(doneroot,openroot):
         
         for entry2 in doneroot.iter("job"):
             inputs2=entry2.find("input")
+            status2=entry2.find("status")
+            if status2.text!="COMPLETE:
+	        continue
             for i,j in enumerate(inputs2.iter("segment")):
                 if i==0:
                     seg1_2=(int(j.text))
@@ -45,7 +50,7 @@ def IntegrateJobfile(doneroot,openroot):
                 host=entry2.find("host")
                 
                 time=entry2.find("time")
-                status.text="COMPLETE"
+                status1.text="COMPLETE"
                 entry1.append(host)
                 entry1.append(time)
                 entry1.append(output)
