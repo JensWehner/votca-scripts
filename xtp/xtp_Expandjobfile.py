@@ -51,20 +51,21 @@ def IntegrateJobfile(doneroot,openroot):
 
 # In[3]:
 
-
+print "Reading in {}".format(args.jobfile2)
 doneroot=XmlParser(args.jobfile2)
+print "Reading in {}".format(args.jobfile1)
 openroot=XmlParser(args.jobfile1)
 
 
 # In[4]:
 
-
+print "Checking which jobs can be moved from {} to {}".format(args.jobfile2,args.jobfile1)
 IntegrateJobfile(doneroot,openroot)
 
 
 # In[5]:
 
-
+print "Writing to {}".format(args.jobfile1)
 XmlWriter(openroot,args.jobfile1)
 
 
