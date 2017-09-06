@@ -1,14 +1,6 @@
-
-# coding: utf-8
-
-# In[1]:
-
-
-
-
+#!/usr/bin/env python
 from __tools__ import *
 import argparse as ap
-import numpy.linalg as lg
 
 
 parser=ap.ArgumentParser(description="Parsing two jobfiles and merging one into the other")
@@ -23,7 +15,7 @@ def IntegrateJobfile(doneroot,openroot):
     for entry1 in openroot.iter('job'):
         inputs1=entry1.find("input")
         status1=entry1.find("status")
-        if status1.text=="COMPLETE:
+        if status1.text=="COMPLETE":
 	    continue
         for i,j in enumerate(inputs1.iter("segment")):
             if i==0:
@@ -36,7 +28,7 @@ def IntegrateJobfile(doneroot,openroot):
         for entry2 in doneroot.iter("job"):
             inputs2=entry2.find("input")
             status2=entry2.find("status")
-            if status2.text!="COMPLETE:
+            if status2.text!="COMPLETE":
 	        continue
             for i,j in enumerate(inputs2.iter("segment")):
                 if i==0:
