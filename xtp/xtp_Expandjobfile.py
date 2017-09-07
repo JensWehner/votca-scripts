@@ -15,9 +15,14 @@ def IntegrateJobfile(doneroot,openroot):
 	used=[]
 	for entry2 in doneroot.iter("job"):
 		used.append(False)
-	
-
+	length=0
 	for entry1 in openroot.iter('job'):
+		length+=1
+	
+	print "{} has {} jobs".format(args.jobfile2,len(used))
+	print "{} has {} jobs".format(args.jobfile1,length)
+	for progress,entry1 in enumerate(openroot.iter('job')):
+		update_progress(progress/float(length))
 		inputs1=entry1.find("input")
 		status1=entry1.find("status")
 		if status1.text=="COMPLETE":
