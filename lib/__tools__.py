@@ -96,7 +96,7 @@ def query_yes_no(question, default="yes"):
 ## A value under 0 represents a 'halt'.
 ## A value at 1 or bigger represents 100%
 def update_progress(progress):
-    barLength = 10 # Modify this to change the length of the progress bar
+    barLength = 20 # Modify this to change the length of the progress bar
     status = ""
     if isinstance(progress, int):
         progress = float(progress)
@@ -110,7 +110,7 @@ def update_progress(progress):
         progress = 1
         status = "Done...\r\n"
     block = int(round(barLength*progress))
-    text = "\rPercent: [{0}] {1}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
+    text = "\rPercent: [{0}] {1:1.0f}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
     sys.stdout.write(text)
     sys.stdout.flush()
 

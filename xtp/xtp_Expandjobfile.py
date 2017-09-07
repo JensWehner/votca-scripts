@@ -41,6 +41,7 @@ def IntegrateJobfile(doneroot,openroot):
 			inputs2=entry2.find("input")
 			status2=entry2.find("status")
 			if status2.text!="COMPLETE":
+				used[index]=True
 				continue
 			for i,j in enumerate(inputs2.iter("segment")):
 				if i==0:
