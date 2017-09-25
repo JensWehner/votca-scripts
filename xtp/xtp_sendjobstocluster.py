@@ -112,6 +112,9 @@ if args.setup:
 		elif options.find("jobcontrol")!=None:
 			jobcontrol=options.find("jobcontrol");
 			jobcontrol.find("job_file").text=jfile
+		elif options.find("control")!=None:
+			control=options.find("control");
+			control.find("job_file").text=jfile
 		else:
 			print "Could not find a jobfile in xml options file. Exiting..."
 			sys.exit()

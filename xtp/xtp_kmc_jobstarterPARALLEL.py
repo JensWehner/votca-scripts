@@ -65,6 +65,9 @@ class Jobentry(object):
 		self.trajectory=trajectory
 		Jobentry.numberofobjects+=1
 
+		self.sqlnames=[]
+		self.submitscriptname=
+		self.trajectoryname=[]
 
 	def initkmcmultiple(self,runtime,outputtime,field):
 		self.field=field
@@ -74,6 +77,7 @@ class Jobentry(object):
 	def initkmclifetime(self,runtime,lifetimefile):
 		self.lifetime=lifetimefile
 		self.runtime=runtime
+		self.lifetimenames=[]
 
 	def Info(self):
 		print self.id, self.jobid, self.database, self.calculator, self.numofcharges, self.runtime, self.field, self.seed, self.runs, self.trajectory
@@ -116,12 +120,13 @@ class Jobentry(object):
 	def setupjobs(self,kmcfolder):
 
 		if os.path.isfile(self.database):
-			os.system(" ln -s {} {}".format(os.path.realpath(self.database),kmcfolder+"/"))
+			os.system(" cp -s {} {}".format(os.path.realpath(self.database),kmcfolder+"/"))
 			
 			print "Setting up Job No {}".format(self.jobid)		 
 			for i in range(self.runs):
-				
 				filekey="job{0:02d}_run{1:02d}".format(self.jobid,i)
+				sqlshort= os.path.splitext(os.path.basename(self.database))[0]
+				os.system(" cp -s {} {}".format(self.database,kmcfolder+"/"+sqlshort+"_"+))
 				self.writeoptionsfile(kmcfolder+"/"+filekey+"_options.xml",filekey,i)
 				self.jobnames.append(filekey)
 				scriptname="jobid_{:02d}_sub.sh".format(self.jobid)
@@ -138,10 +143,12 @@ class Jobentry(object):
 		if len(self.jobnames)==0:
 			print "you have not created the options files, exiting"
 			sys.exit()
-		runcommand="("
-		for i in self.jobnames:
-			runcommand=runcommand+"xtp_run -e {0} -o {1}_options.xml -f {2} -s 0 > {1}_out.txt & sleep 0.5;".format(self.calculator,i,self.database)
-		runcommand = runcommand + "wait) && echo \"Done with all jobs.\""
+		runcommand=""
+		waitcommand=""
+		for index,i in enumerate(self.jobnames):
+			runcommand=runcommand+" xtp_run -e {0} -o {1}_options.xml -f {2} -s 0 > {1}_out.txt &\n".format(self.calculator,i,self.database,index+1)
+			#waitcommand+=" $P{}".format(index+1)
+		runcommand = runcommand + "wait{}".format(waitcommand)
 
 		return runcommand
 
@@ -207,7 +214,6 @@ class Joblist(object):
 		os.mkdir(self.foldername)
 		print "creating folder {}".format(self.foldername)
 		for i in self.joblist:
-			print i.Info()
 			i.setupjobs(self.foldername)
 
 	def Submitjobs(self):
