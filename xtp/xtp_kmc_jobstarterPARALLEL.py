@@ -45,6 +45,8 @@ def writeentry(entry,parent,value):
 
 
 
+
+
 class Jobentry(object):
 
 	numberofobjects= 0
@@ -57,17 +59,18 @@ class Jobentry(object):
 		self.calculator=calculator
 		self.numofcharges=numofcharges   
 		self.temperature=temperature   
-		self.seed=seed 
+		self.seed=seed
 		self.runs=runs   
-		self.trajectory=trajectory
-		self.jobnames=[]
 		self.carrier=carriertype
-		self.trajectory=trajectory
 		Jobentry.numberofobjects+=1
-
-		self.sqlnames=[]
-		self.submitscriptname=
-		self.trajectoryname=[]
+		self.trajectory=trajectory
+		self.optionfile=calculator+".xml"
+		self.logfile=calculator+".log"
+		self.filekeys=[]
+		for i in range(self.runs):
+			self.filekeys.append("job{0:02d}_run{1:02d}_".format(self.jobid,i))
+		self.submitscriptname="jobid_{:02d}_sub.sh".format(self.jobid)
+		
 
 	def initkmcmultiple(self,runtime,outputtime,field):
 		self.field=field
@@ -77,24 +80,23 @@ class Jobentry(object):
 	def initkmclifetime(self,runtime,lifetimefile):
 		self.lifetime=lifetimefile
 		self.runtime=runtime
-		self.lifetimenames=[]
+
 
 	def Info(self):
 		print self.id, self.jobid, self.database, self.calculator, self.numofcharges, self.runtime, self.field, self.seed, self.runs, self.trajectory
 
 
 
-	def writeoptionsfile(self,filename,filekey,i=0):
+	def writeoptionsfile(self,optionfile,i):
 		options = lxml.Element("options")
 		calculator =lxml.SubElement(options, self.calculator)
-		trajectoryfile=os.path.splitext(self.trajectory)[0]+"_"+filekey+".csv"
-		writeentry("seed",calculator,str(self.seed+i))
+		writeentry("seed",calculator,self.seed+i)
 		writeentry("injectionpattern",calculator,"*")
 		writeentry("injectionmethod",calculator,"random")
 		writeentry("numberofcharges",calculator,self.numofcharges)
 		writeentry("rates",calculator,"calculate")
 		writeentry("carriertype",calculator,self.carrier)
-		writeentry("trajectoryfile",calculator,trajectoryfile)
+		writeentry("trajectoryfile",calculator,self.filekeys[i]+self.trajectory)
 
 		if self.calculator=="kmcmultiple":		   
 			writeentry("runtime",calculator,self.runtime)
@@ -104,10 +106,10 @@ class Jobentry(object):
 
 		elif self.calculator=="kmclifetime":
 			writeentry("numberofinsertions",calculator,self.runtime)
-			writeentry("lifetimefile",calculator,os.path.realpath(self.lifetime))
+			writeentry("lifetimefile",calculator,self.filekeys[i]+self.lifetime)
 			
 
-		with open(filename, 'w') as f:
+		with open(optionfile, 'w') as f:
 			f.write(lxml.tostring(options, pretty_print=True))
 		return
 		
@@ -120,19 +122,15 @@ class Jobentry(object):
 	def setupjobs(self,kmcfolder):
 
 		if os.path.isfile(self.database):
-			os.system(" cp -s {} {}".format(os.path.realpath(self.database),kmcfolder+"/"))
-			
 			print "Setting up Job No {}".format(self.jobid)		 
 			for i in range(self.runs):
-				filekey="job{0:02d}_run{1:02d}".format(self.jobid,i)
-				sqlshort= os.path.splitext(os.path.basename(self.database))[0]
-				os.system(" cp -s {} {}".format(self.database,kmcfolder+"/"+sqlshort+"_"+))
-				self.writeoptionsfile(kmcfolder+"/"+filekey+"_options.xml",filekey,i)
-				self.jobnames.append(filekey)
-				scriptname="jobid_{:02d}_sub.sh".format(self.jobid)
-				self.submitscript(kmcfolder+"/"+scriptname)
-				os.system("chmod 755 \"{}\"".format(kmcfolder+"/"+scriptname))
-				print "Creating files for run {} now.".format(i)
+				os.system("cp {} {}".format(self.database,kmcfolder+"/"+self.filekeys[i]+self.database))
+				self.writeoptionsfile(kmcfolder+"/"+self.filekeys[i]+self.optionfile,i)
+				if self.calculator=="kmclifetime":
+					os.system("cp {} {}".format(self.lifetime,kmcfolder+"/"+self.filekeys[i]+self.lifetime))
+			self.submitscript(kmcfolder+"/"+self.submitscriptname)
+			os.system("chmod 755 \"{}\"".format(kmcfolder+"/"+self.submitscriptname))
+				
 				
 		else:
 			print "Sql-file {} not found".format(self.database)
@@ -140,13 +138,11 @@ class Jobentry(object):
 	   
 	
 	def setupruncommand(self):
-		if len(self.jobnames)==0:
-			print "you have not created the options files, exiting"
-			sys.exit()
+		
 		runcommand=""
 		waitcommand=""
-		for index,i in enumerate(self.jobnames):
-			runcommand=runcommand+" xtp_run -e {0} -o {1}_options.xml -f {2} -s 0 > {1}_out.txt &\n".format(self.calculator,i,self.database,index+1)
+		for key in self.filekeys:
+			runcommand=runcommand+" xtp_run -e {} -o {} -f {} -s 0 > {} &\n".format(self.calculator,key+self.optionfile,key+self.database,key+self.logfile)
 			#waitcommand+=" $P{}".format(index+1)
 		runcommand = runcommand + "wait{}".format(waitcommand)
 
@@ -165,8 +161,7 @@ class Jobentry(object):
 	def runoncluster(self,kmcfolder):
 		
 		with cd(kmcfolder):
-			scriptname="jobid_{:02d}_sub.sh".format(self.jobid)
-			os.system("qsub {}".format(scriptname))
+			os.system("qsub {}".format(self.submitscriptname))
 		
 
 class Joblist(object):
