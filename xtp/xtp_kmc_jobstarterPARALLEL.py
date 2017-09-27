@@ -51,8 +51,8 @@ class Jobentry(object):
 
 	numberofobjects= 0
 	
-	def __init__(self, jobid,calculator,database,numofcharges, temperature,seed, runs, carriertype,trajectory):
-		
+	def __init__(self, jobid,calculator,database,numofcharges, temperature,seed, runs, carriertype,trajectory,maxrealtime=35):
+		self.maxrealtime=maxrealtime
 		self.id=Jobentry.numberofobjects
 		self.jobid=jobid
 		self.database=database
@@ -93,6 +93,7 @@ class Jobentry(object):
 		writeentry("seed",calculator,self.seed+i)
 		writeentry("injectionpattern",calculator,"*")
 		writeentry("injectionmethod",calculator,"random")
+		writeentry("maxrealtime",calculator,self.maxrealtime)
 		writeentry("numberofcharges",calculator,self.numofcharges)
 		writeentry("rates",calculator,"calculate")
 		writeentry("carriertype",calculator,self.carrier)
@@ -178,16 +179,17 @@ class Joblist(object):
 			if status!= "AVAILABLE":
 				print "Job with Jobid {} is marked as inactive and will be ignored".format(jobid)
 				continue
-
+			
 			calculator=entry.find("calculator").text
 			database=entry.find("statefile").text
 			numofcharges=int(entry.find("numberofcharges").text)
+			maxrealtime=float(entry.find("maxrealtime").text)
 			seed=int(entry.find("seed").text)
 			runs=int(entry.find("runs").text)
 			temperature=float(entry.find("temperature").text)
 			trajectoryfile=entry.find("trajectoryfile").text
 			carriertype=entry.find("carriertype").text
-			job=Jobentry(jobid,calculator,database,numofcharges,temperature,seed, runs, carriertype,trajectoryfile)
+			job=Jobentry(jobid,calculator,database,numofcharges,temperature,seed, runs, carriertype,trajectoryfile,maxrealtime)
 			if calculator=="kmcmultiple":
 				runtime=float(entry.find("runtime").text)
 				outputtime=float(entry.find("outputtime").text)
