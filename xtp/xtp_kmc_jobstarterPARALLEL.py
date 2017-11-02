@@ -106,7 +106,7 @@ class Jobentry(object):
 			
 
 		elif self.calculator=="kmclifetime":
-			writeentry("numberofinsertions",calculator,self.runtime)
+			writeentry("numberofinsertions",calculator,int(self.runtime))
 			writeentry("lifetimefile",calculator,self.filekeys[i]+self.lifetime)
 			
 
@@ -182,7 +182,7 @@ class Joblist(object):
 			
 			calculator=entry.find("calculator").text
 			database=entry.find("statefile").text
-			numofcharges=int(entry.find("numofcharges").text)
+			numofcharges=int(entry.find("numberofcharges").text)
 			maxrealtime=float(entry.find("maxrealtime").text)
 			seed=int(entry.find("seed").text)
 			runs=int(entry.find("runs").text)
@@ -197,7 +197,7 @@ class Joblist(object):
 				job.initkmcmultiple(runtime,outputtime,field)
 			elif calculator=="kmclifetime":
 				runtime=float(entry.find("numberofinsertions").text)
-				lifetimefile=float(entry.find("lifetimefile").text)
+				lifetimefile=entry.find("lifetimefile").text
 				job.initkmclifetime(runtime,lifetimefile)
 			self.joblist.append(job)
 		return
