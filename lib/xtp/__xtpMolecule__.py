@@ -144,7 +144,7 @@ class molecule:
 			self.shift(np.dot(R,i.pos))	
 		self.calccoG()
 			
-	def writexyz(self,filename,header=False):
+	def writexyz(self,filename,header=True):
 		with open(filename,"w") as f:
 			if header!=False:
 				f.write("{}\n".format(len(self.atomlist)))
