@@ -15,16 +15,19 @@ import os.path
 parser=ap.ArgumentParser(description="Creating state file from a pairs and segment file")
 parser.add_argument("-f","--statefile",required=True,type=str, help="statefile to create/insert")
 parser.add_argument('-b',"--boxfile",default="",type=str, help="xml file to read boxdata from")
-parser.add_argument('-pf',"--pairfile",default="",type=str, help="pairfile to parse data from")
-parser.add_argument('-sf',"--segfile",default="",type=str, help="segment file to parse data from")
+parser.add_argument('-p',"--pairfile",default="",type=str, help="pairfile to parse data from")
+parser.add_argument('-s',"--segfile",default="",type=str, help="segment file to parse data from")
 parser.add_argument('-c',"--create", action='store_const', const=1,default=0,help="Creates statefile")
-parser.add_argument('-p',"--importpairs", action='store_const', const=1,default=0,help="Import pairs")
-parser.add_argument('-s',"--importsegments", action='store_const', const=1,default=0,help="Import segments")
 parser.add_argument("-t","--type", choices=["h","e","s","t"],type=str,help="Specify which kind of state to import, e,h,s,t")
 
 args=parser.parse_args()
 
 
+def writeSegtypetoSql(cursor,segtype,segtypeid):
+	c.execute('''INSERT INTO segmentTypes(frame,top,id,name,basis,orbfile,torbnrs,coordfile,canRigid) VALUES('0','0','{}','{}','NOT USED','NOT USED','NOT USED','NOT USED',1 ) '''.format(segtypeid,segtype))
+
+def writeMoltoSql(cursor,name,molid):
+	c.execute('''INSERT INTO molecules(frame,top,id,name,type) VALUES('0','0','{}','{}','{}') '''.format(molid,name,name))
 
 def writePairtoSql(cursor,pair,statetype):
 	has=[0,0,0,0]
@@ -60,7 +63,7 @@ def writeSegtoSql(cursor,seg,statetype):
 	elif args.type=="t":
 		has[3]=1
 		Eseg[3]=seg[5]
-	c.execute('''INSERT INTO segments (frame,top,id,name,type,mol,posX,posY,posZ,UnCnNe,UnCnNh,UcNcCe,UcNcCh,UcCnNe,UcCnNh,UxXnNs,UxXnNt,UxNxXs,UxNxXt,UxXnNs,UxXnNt,eAnion,eNeutral,eCation,eSinglet,eTriplet,has_e,has_h,has_s,has_t,occPe,occPh,occPs,occPt) VALUES ('0','0','{}','{}','{}','{}','{}','{}','{}','0','0','0','0','0','0','0','0','0','0','0','0','{}','0','{}','{}','{}','{}','{}','{}','{}','0','0','0','0')'''.format(seg[0],seg[1],seg[1],seg[1],seg[2],seg[3],seg[4],Eseg[0],Eseg[1],Eseg[2],Eseg[3],has[0],has[1],has[2],has[3],))
+	c.execute('''INSERT INTO segments (frame,top,id,name,type,mol,posX,posY,posZ,UnCnNe,UnCnNh,UcNcCe,UcNcCh,UcCnNe,UcCnNh,UxXnNs,UxXnNt,UxNxXs,UxNxXt,UxXnNs,UxXnNt,eAnion,eNeutral,eCation,eSinglet,eTriplet,has_e,has_h,has_s,has_t,occPe,occPh,occPs,occPt) VALUES ('0','0','{}','{}','{}','{}','{}','{}','{}','0','0','0','0','0','0','0','0','0','0','0','0','{}','0','{}','{}','{}','{}','{}','{}','{}','0','0','0','0')'''.format(seg[0],seg[1],seg[1],seg[0],seg[2],seg[3],seg[4],Eseg[0],Eseg[1],Eseg[2],Eseg[3],has[0],has[1],has[2],has[3],))
 
 
 if args.importpairs or args.importsegments:
@@ -117,10 +120,8 @@ if args.create:
 	c.execute('''CREATE TABLE superExchange (_id INTEGER PRIMARY KEY AUTOINCREMENT,frame INT NOT NULL,top INT NOT NULL,type TEXT NOT NULL)''')
 	c.execute('''INSERT INTO frames (id,time,step,box11,box12,box13,box21,box22,box23,box31,box32,box33,canRigid) VALUES('0','0','0','{}','{}','{}','{}','{}','{}','{}','{}','{}',1 ) '''.format(box[0],box[3],box[4],box[3],box[1],box[5],box[4],box[5],box[2]))
 
-if args.importpairs:
-	if args.pairfile=="":
-		print "specify pairfile to parse, -pf"	
-		sys.exit()
+
+if args.pairfile!="":
 	with open(args.pairfile,"r") as f:
 		lines=f.readlines()
 		for line in lines:
@@ -130,18 +131,22 @@ if args.importpairs:
 			pair=np.array(toc,dtype=float)
 			writePairtoSql(c,pair,args.type)
 
-if args.importsegments:
-	if args.segfile=="":
-		print "specify segfile to parse, -mf"	
-		sys.exit()
+
+if args.segfile!="":	
+	types=[]
 	with open(args.segfile,"r") as f:
 		lines=f.readlines()
 		for line in lines:
 			if "ID" in line or "#" in line:
 				continue
 			toc=line.split()
-			seg=[int(toc[0]),toc[1],float(toc[2]),float(toc[3]),float(toc[4]),float(toc[5])]
+			segtype=toc[1]
+			if segtype not in types:
+				types.append(segtype)
+				writeSegtypetoSql(c,segtype,len(types))
+			seg=[int(toc[0]),segtype,float(toc[2]),float(toc[3]),float(toc[4]),float(toc[5])]
 			writeSegtoSql(c,seg,args.type)
+			writeMoltoSql(c,segtype,int(toc[0]))
 
 
 con.commit()
