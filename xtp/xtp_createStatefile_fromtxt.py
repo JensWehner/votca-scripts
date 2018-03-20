@@ -48,7 +48,7 @@ def writePairtoSql(cursor,pair,statetype):
 	c.execute('''INSERT INTO pairs(frame,top,id,seg1,seg2,drX,drY,drZ,lOe,lOh,lOs,lOt,has_e,has_h,has_s,has_t,rate12e,rate21e,rate12h,rate21h,rate12s,rate21s,rate12t,rate21t,Jeff2e,Jeff2h,Jeff2s,Jeff2t,type) VALUES('0','0','{}','{}','{}','{}','{}','{}',0,0,0,0,'{}','{}','{}','{}',0,0,0,0,0,0,0,0,'{}','{}','{}','{}',0 ) '''.format(pair[0],pair[1],pair[2],pair[3],pair[4],pair[5],has[0],has[1],has[2],has[3],Jeff[0],Jeff[1],Jeff[2],Jeff[3]))
 
 
-def writeSegtoSql(cursor,seg,statetype):
+def writeSegtoSql(cursor,seg,statetype,moltype):
 	has=[0,0,0,0]
 	Eseg=[0,0,0,0]
 	if args.type=="e":
@@ -63,10 +63,10 @@ def writeSegtoSql(cursor,seg,statetype):
 	elif args.type=="t":
 		has[3]=1
 		Eseg[3]=seg[5]
-	c.execute('''INSERT INTO segments (frame,top,id,name,type,mol,posX,posY,posZ,UnCnNe,UnCnNh,UcNcCe,UcNcCh,UcCnNe,UcCnNh,UxXnNs,UxXnNt,UxNxXs,UxNxXt,UxXnNs,UxXnNt,eAnion,eNeutral,eCation,eSinglet,eTriplet,has_e,has_h,has_s,has_t,occPe,occPh,occPs,occPt) VALUES ('0','0','{}','{}','{}','{}','{}','{}','{}','0','0','0','0','0','0','0','0','0','0','0','0','{}','0','{}','{}','{}','{}','{}','{}','{}','0','0','0','0')'''.format(seg[0],seg[1],seg[1],seg[0],seg[2],seg[3],seg[4],Eseg[0],Eseg[1],Eseg[2],Eseg[3],has[0],has[1],has[2],has[3],))
+	c.execute('''INSERT INTO segments (frame,top,id,name,type,mol,posX,posY,posZ,UnCnNe,UnCnNh,UcNcCe,UcNcCh,UcCnNe,UcCnNh,UxXnNs,UxXnNt,UxNxXs,UxNxXt,UxXnNs,UxXnNt,eAnion,eNeutral,eCation,eSinglet,eTriplet,has_e,has_h,has_s,has_t,occPe,occPh,occPs,occPt) VALUES ('0','0','{}','{}','{}','{}','{}','{}','{}','0','0','0','0','0','0','0','0','0','0','0','0','{}','0','{}','{}','{}','{}','{}','{}','{}','0','0','0','0')'''.format(seg[0],seg[1],moltype,seg[0],seg[2],seg[3],seg[4],Eseg[0],Eseg[1],Eseg[2],Eseg[3],has[0],has[1],has[2],has[3],))
 
 
-if args.importpairs or args.importsegments:
+if args.pairfile!="" or args.segfile!="":
 	if not args.type:
 		print "Specify type to read in, -t"
 		sys.exit()
@@ -145,7 +145,7 @@ if args.segfile!="":
 				types.append(segtype)
 				writeSegtypetoSql(c,segtype,len(types))
 			seg=[int(toc[0]),segtype,float(toc[2]),float(toc[3]),float(toc[4]),float(toc[5])]
-			writeSegtoSql(c,seg,args.type)
+			writeSegtoSql(c,seg,args.type,len(types))
 			writeMoltoSql(c,segtype,int(toc[0]))
 
 
