@@ -58,6 +58,7 @@ def RepresentsFloat(s):
     except ValueError:
         return False 
 
+
 def query_yes_no(question, default="yes"):
     """Ask a yes/no question via raw_input() and return their answer.
 

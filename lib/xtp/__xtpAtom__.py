@@ -36,7 +36,7 @@ class atom:
 
 
     def xyzline(self):
-        return "{:<3s}\t{:+.5f}\t{:+.5f}\t{:+.5f}\n".format(self.type,self.pos[0],self.pos[1],self.pos[2])
+        return "{:<3s} {:.6f} {:.6f} {:.6f}\n".format(self.type,self.pos[0],self.pos[1],self.pos[2])
 
 
 
