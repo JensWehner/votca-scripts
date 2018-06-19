@@ -157,7 +157,7 @@ class molecule:
       for atom in self.atomlist:
         f.write(atom.xyzline())
 
-  def writemps(self,filename,header=False):
+  def writemps(self,filename,header=False, splitmultipoles=0):
     d=self.calcDmonopoles()
     with open(filename,"w") as f: 
       if type(header)==str:
@@ -167,7 +167,12 @@ class molecule:
       f.write("! N={} Q[e]={:+1.7f} D[e*nm]={:+1.7e} {:+1.7e} {:+1.7e}\n".format(len(self.atomlist),self.calcQ(),d[0]*0.1,d[1]*0.1,d[2]*0.1))
       f.write("Units angstrom\n")
       for atom in self.atomlist:
-        f.write(atom.mpsentry())
+        if not splitmultipoles:
+          f.write(atom.mpsentry())
+        else:
+          mlist=atom.splitup(splitmultipoles)
+          for m in mlist:
+            f.write(m.mpsentry())
 
   def readxyzfile(self,filename):
       noofatoms=None
@@ -195,10 +200,10 @@ class molecule:
     line1=False
     line2=False
     conversion=False
-    d=None
-    quad=None
-    q=None
-    r=None
+    d=np.zeros(3)
+    quad=np.zeros(5)
+    q=0
+    r=np.zeros(3)
     element=None
     with open(filename,"r") as f:
   
@@ -232,10 +237,6 @@ class molecule:
           line2=False
           line3=False
           at=atom(element,r)
-          if quad==None:
-            quad=np.zeros(5)
-          if d==None:
-            d=np.zeros(3)
           at.setmultipoles(q,d,quad,ptensor)
           self.updateatom(at)
     

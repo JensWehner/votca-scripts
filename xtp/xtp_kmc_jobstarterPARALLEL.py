@@ -15,7 +15,7 @@ from __tools__ import *
 
 
 
-parser=ap.ArgumentParser(description="Enviroment to do run multiple kmc calculations")
+parser=ap.ArgumentParser(description="Enviroment to run multiple kmc calculations")
 parser.add_argument('-j',"--jobfile",type=str,required=True,help="File with kmc jobs")
 parser.add_argument('-o',"--options",type=str,required=True,help="Optionfile for cluster")
 parser.add_argument('--submit', action='store_const', const=1, default=0,help="Submit to cluster")

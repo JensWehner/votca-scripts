@@ -20,6 +20,24 @@ class atom:
         self.detrank()
         self.pol=pol
 
+    def CartesianQuadrupoles(self):
+        cartesian=np.zeros([3,3])
+        sqrt3=np.sqrt(3)
+        cartesian[0][0] = 0.5 * (sqrt3 * self.quad[3] - self.quad[0])
+        cartesian[1][1] = -0.5 * (sqrt3 * self.quad[3] + self.quad[0]);
+        cartesian[2][2] = self.quad[0];
+
+        cartesian[0][1] = 0.5 * sqrt3 * self.quad[4];
+        cartesian[1][0] = cartesian[0][1];
+
+        cartesian[0][2] = 0.5 * sqrt3 * self.quad[1];
+        cartesian[2][0] = cartesian[0][2];
+
+        cartesian[1][2] = 0.5 * sqrt3 * self.quad[2];
+        cartesian[2][1] = cartesian[1][2];
+
+        return cartesian
+
     def detrank(self):
         rank=0
         if any(self.d!=0):
@@ -37,6 +55,45 @@ class atom:
 
     def xyzline(self):
         return "{:<3s} {:.6f} {:.6f} {:.6f}\n".format(self.type,self.pos[0],self.pos[1],self.pos[2])
+
+
+    def splitup(self,spacing=0.01):
+        multipolelist=[]
+        m=atom(self.type,self.pos)
+        m.setmultipoles(self.q,np.zeros(3),np.zeros(5),self.pol)
+        multipolelist.append(m)
+
+        if self.rank>0 and any(self.d!=0):
+            norm=self.d/np.linalg.norm(self.d)
+            posA=self.pos+0.5*spacing*norm
+            posB=self.pos-0.5*spacing*norm
+            qA=np.linalg.norm(self.d)/spacing
+            if np.absolute(qA) >1.e-9:
+                qB=-qA
+                d1=atom("D",posA);
+                d1.setmultipoles(qA,np.zeros(3),np.zeros(5),np.zeros([3,3]))
+                d2 = atom("D", posB);
+                d2.setmultipoles(qB, np.zeros(3), np.zeros(5), np.zeros([3, 3]))
+                multipolelist.append(d1)
+                multipolelist.append(d2)
+        if self.rank>1:
+            cartesian=self.CartesianQuadrupoles()
+            eigenval,eigenvec=np.linalg.eigh(cartesian)
+            quadspacing=2*spacing
+            for val,vec in zip(eigenval,eigenvec):
+                q=val/quadspacing**2
+                if np.absolute(q)<1.e-9:
+                    continue
+                vecA=self.pos+0.5*quadspacing*vec
+                vecB = self.pos - 0.5 * quadspacing * vec
+                q1 = atom("Q", vecA);
+                q1.setmultipoles(q, np.zeros(3), np.zeros(5), np.zeros([3, 3]))
+                q2 = atom("Q", vecB);
+                q2.setmultipoles(q, np.zeros(3), np.zeros(5), np.zeros([3, 3]))
+                multipolelist.append(q1)
+                multipolelist.append(q2)
+        return multipolelist
+
 
 
 
