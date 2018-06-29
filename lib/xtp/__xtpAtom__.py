@@ -64,7 +64,8 @@ class atom:
         multipolelist.append(m)
 
         if self.rank>0 and any(self.d!=0):
-            norm=self.d/np.linalg.norm(self.d)
+            cartesian=np.array([self.d[1],self.d[2],self.d[0]])
+            norm=cartesian/np.linalg.norm(self.d)
             posA=self.pos+0.5*spacing*norm
             posB=self.pos-0.5*spacing*norm
             qA=np.linalg.norm(self.d)/spacing
@@ -98,12 +99,15 @@ class atom:
 
 
     def mpsentry(self):
-        self.detrank
+        bohr2A=0.52917721092
+        self.detrank()
         entry="{:>3s} {:+.7f} {:+.7f} {:+.7f} Rank {:d}\n    {:+.7f}\n".format(self.type,self.pos[0],self.pos[1],self.pos[2],self.rank,self.q)
         pline="     P {:+.7f} {:+.7f} {:+.7f} {:+.7f} {:+.7f} {:+.7f}\n".format(self.pol[0,0],self.pol[0,1],self.pol[0,2],self.pol[1,1],self.pol[1,2],self.pol[2,2])
         if self.rank>0:
-            entry+="    {:+.7f} {:+.7f} {:+.7f}\n".format(self.d[0],self.d[1],self.d[2])
+            d=self.d/bohr2A
+            entry+="    {:+.7f} {:+.7f} {:+.7f}\n".format(d[0],d[1],d[2])
         if self.rank>1:
-            entry+="    {:+.7f} {:+.7f} {:+.7f} {:+.7f} {:+.7f}\n".format(self.quad[0],self.quad[1],self.quad[2],self.quad[3],self.quad[4])
+            quad=self.quad/(bohr2A**2)
+            entry+="    {:+.7f} {:+.7f} {:+.7f} {:+.7f} {:+.7f}\n".format(quad[0],quad[1],quad[2],quad[3],quad[4])
         entry+=pline
         return entry

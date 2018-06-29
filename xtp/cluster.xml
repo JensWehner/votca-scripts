@@ -1,0 +1,8 @@
+<cluster>
+<queue>cpumuscet</queue>
+<procs>20</procs>
+<tag>KMC</tag>
+<workdir></workdir>
+<modules></modules>
+<source></source>
+</cluster>

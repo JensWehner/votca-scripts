@@ -1,0 +1,17 @@
+<jobs>
+  <job>
+<status>AVAILABLE</status>
+<calculator>kmcmultiple<calculator>
+<statefile>system_exint.sql</statefile>
+<numberofcharges>1</numberofcharges>
+<maxrealtime>35</maxrealtime>
+<seed>35</seed>
+<runs>20</runs>
+<temperature>300</temperature>
+<temperature>300</temperature>
+  </job>
+
+
+
+
+</jobs>

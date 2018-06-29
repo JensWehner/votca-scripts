@@ -205,6 +205,7 @@ class molecule:
     q=0
     r=np.zeros(3)
     element=None
+    bohr2A=0.52917721092
     with open(filename,"r") as f:
   
       for line in f.readlines():
@@ -237,7 +238,7 @@ class molecule:
           line2=False
           line3=False
           at=atom(element,r)
-          at.setmultipoles(q,d,quad,ptensor)
+          at.setmultipoles(q,d*bohr2A,quad*bohr2A**2,ptensor)
           self.updateatom(at)
     
     self.calccoG()
