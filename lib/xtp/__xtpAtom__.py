@@ -80,19 +80,25 @@ class atom:
         if self.rank>1:
             cartesian=self.CartesianQuadrupoles()
             eigenval,eigenvec=np.linalg.eigh(cartesian)
-            quadspacing=2*spacing
-            for val,vec in zip(eigenval,eigenvec):
-                q=val/quadspacing**2
+            fullcharge=0
+            for val,vec in zip(eigenval,eigenvec.T):
+                q=1/3.0*val/(spacing**2)
                 if np.absolute(q)<1.e-9:
                     continue
-                vecA=self.pos+0.5*quadspacing*vec
-                vecB = self.pos - 0.5 * quadspacing * vec
+                vecA=self.pos+spacing*vec
+                vecB = self.pos-spacing * vec
                 q1 = atom("Q", vecA);
                 q1.setmultipoles(q, np.zeros(3), np.zeros(5), np.zeros([3, 3]))
                 q2 = atom("Q", vecB);
                 q2.setmultipoles(q, np.zeros(3), np.zeros(5), np.zeros([3, 3]))
                 multipolelist.append(q1)
                 multipolelist.append(q2)
+            quad=np.zeros([3,3])
+            total=0
+            for m in multipolelist:
+                total+=m.q
+                quad+=m.q*(1.5*np.outer(m.pos-self.pos,m.pos-self.pos)-0.5*np.identity(3)*(np.sum((m.pos-self.pos)**2)))
+            print cartesian/quad
         return multipolelist
 
 
