@@ -94,11 +94,6 @@ class atom:
                 multipolelist.append(q1)
                 multipolelist.append(q2)
             quad=np.zeros([3,3])
-            total=0
-            for m in multipolelist:
-                total+=m.q
-                quad+=m.q*(1.5*np.outer(m.pos-self.pos,m.pos-self.pos)-0.5*np.identity(3)*(np.sum((m.pos-self.pos)**2)))
-            print cartesian/quad
         return multipolelist
 
 
