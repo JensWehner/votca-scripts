@@ -41,6 +41,7 @@ def readexcitonlogfile(filename):
     holeT=[]
     TrDip=[]
     electronT=[]
+    RPAlevel=None
     homo=None
     lumo=None
     dft=False
@@ -55,6 +56,8 @@ def readexcitonlogfile(filename):
                 add=1
             if "QM energy[eV]" in line and dftenergy==None:
                 dftenergy=float(line.split()[-1])
+            elif "Set RPA level range" in line:
+                RPAlevel=int((line.split()[8]).split(":")[-1][:-1])
             elif "====== Perturbative quasiparticle energies (Hartree) ======" in line:
                 conversion=hrt2ev
                 dft=True
@@ -108,6 +111,7 @@ def readexcitonlogfile(filename):
                 fragBS.append(float(line.split()[12+add]))
     results=molecule()
     results.addHomoLumo(homo,lumo)
+    results.setRPAlevels(RPAlevel)
     results.addEgroundstate(dftenergy)
     results.addDFTenergies(appendarrayorNone([levelid,dftlist,gwa]))
     results.addQPenergies(appendarrayorNone([levelidqp,qp]))
@@ -116,8 +120,6 @@ def readexcitonlogfile(filename):
     results.addFragmentsSinglet(appendarrayorNone([fragAS,fragBS]),appendarrayorNone([holeS,electronS]))
     results.addFragmentsTriplet(appendarrayorNone([fragAT,fragBT]),appendarrayorNone([holeT,electronT]))
     return results
-
-
 
 
 def getcouplingfromsplit(filename,states):

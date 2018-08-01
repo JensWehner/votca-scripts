@@ -17,6 +17,10 @@ class molecule:
     self.QPenergies=None
     self.Singlets=None
     self.Triplets=None
+    self.BasisFunctions=None
+    self.RPAlevels=None
+    self.GWlevels=None
+    self.BSElevels=None
     self.osc=None
     self.TrDip=None
     self.TripletCTpop=None
@@ -28,6 +32,9 @@ class molecule:
     index=np.where(self.DFTenergies[0]==level)
     energy=self.DFTenergies.T[index][0][1:]
     return energy
+
+  def setRPAlevels(self,levels):
+    self.RPAlevels=levels
 
 
   def calccoG(self):
@@ -145,7 +152,7 @@ class molecule:
       self.shift(np.dot(R,i.pos))  
     self.calccoG()
       
-  def writexyz(self,filename,header=True):
+  def writexyzfile(self,filename,header=True):
     with open(filename,"w") as f:
       if header!=False:
         f.write("{}\n".format(len(self.atomlist)))
@@ -157,7 +164,7 @@ class molecule:
       for atom in self.atomlist:
         f.write(atom.xyzline())
 
-  def writemps(self,filename,header=False, splitmultipoles=0):
+  def writempsfile(self,filename,header=False, splitmultipoles=0):
     d=self.calcDmonopoles()
     with open(filename,"w") as f: 
       if type(header)==str:
@@ -187,7 +194,7 @@ class molecule:
           elif len(entries)==1 and RepresentsInt(entries[0]):
             noofatoms=int(entries[0])
           elif len(entries)!=4 or (not RepresentsFloat(entries[1]) or not RepresentsFloat(entries[2]) or not RepresentsFloat(entries[3])):
-            self.name=line
+            self.name=line.replace('\n', ' ').replace('\r', '')
           elif len(entries)==4:
             name=entries[0]
             pos=np.array(entries[1:],dtype=float)
@@ -196,7 +203,7 @@ class molecule:
       self.calccoG()
       return
 
-  def readmps(self,filename):
+  def readmpsfile(self,filename):
     line1=False
     line2=False
     conversion=False
@@ -207,9 +214,9 @@ class molecule:
     element=None
     bohr2A=0.52917721092
     with open(filename,"r") as f:
-  
       for line in f.readlines():
         a=line.split()
+        ptensor=np.zeros((3,3))
         if "Units angstrom" in line:
           conversion=1
         elif "Units bohr" in line:
@@ -224,19 +231,19 @@ class molecule:
         elif len(a)==1 and line1:
           q=float(a[0])
           line2=True
-        elif len(a)==3 and line1 and line2:
+        elif len(a)==3 and line1 and line2 and rank>=1:
           d=np.array(a[0:3],dtype=float) 
-          line3=True
-        elif len(a)==5 and line1 and line2 and line3 and "P" not in line:
+        elif len(a)==5 and line1 and line2 and "P" not in line and rank==2:
           quad=np.array(a[0:],dtype=float) 
-          line3=True
         elif "P" in line and line1 and line2:
-          p=np.array(a[1:],dtype=float)
-          #print p
-          ptensor=np.array([[p[0],p[1],p[2]],[p[1],p[3],p[4]],[p[2],p[4],p[5]]])
+            p=np.array(a[1:],dtype=float)
+            if len(a[1:])==3:
+                ptensor=np.array([[p[0],0,0],[0,p[1],0],[0,0,p[2]]])
+            elif len(a[1:])==6:
+                ptensor=np.array([[p[0],p[1],p[2]],[p[1],p[3],p[4]],[p[2],p[4],p[5]]])
+        elif line1 and line2: 
           line1=False
           line2=False
-          line3=False
           at=atom(element,r)
           at.setmultipoles(q,d*bohr2A,quad*bohr2A**2,ptensor)
           self.updateatom(at)
