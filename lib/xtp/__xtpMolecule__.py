@@ -27,6 +27,8 @@ class molecule:
     self.SingletCTpop=None
     self.SingletCharge=None
     self.TripletCharge=None
+    self.basissize=0
+    self.auxsize=0;
 
   def getEnergy(self,level):
     index=np.where(self.DFTenergies[0]==level)

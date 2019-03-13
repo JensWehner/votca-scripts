@@ -10,7 +10,7 @@ parser.add_argument('-s',"--streamname",type=str, help="streamname to output to"
 args=parser.parse_args()
 
 for line in args.xmlfile:
-    string=args.streamname+"<<\""+line.replace("\"","\\\"").replace("\n","")+"<<\"std::endl;"
+    string=args.streamname+"<<\""+line.replace("\"","\\\"").replace("\n","")+"\"<<std::endl;"
     print(string)    
 
 

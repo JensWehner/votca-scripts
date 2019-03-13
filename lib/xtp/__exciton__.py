@@ -109,6 +109,10 @@ def readexcitonlogfile(filename):
                 electronS.append(float(tok[8+add].strip("%")))
             elif sbool and "Fragment B" in line:
                 fragBS.append(float(line.split()[12+add]))
+            elif "Filled DFT Basis of size" in line:
+                basissize=int(line.split()[-1])
+            elif "Filled Auxbasis of size" in line:
+                auxsize=int(line.split()[-1])
     results=molecule()
     results.addHomoLumo(homo,lumo)
     results.setRPAlevels(RPAlevel)
@@ -119,6 +123,8 @@ def readexcitonlogfile(filename):
     results.addTriplets(appendarrayorNone(t))
     results.addFragmentsSinglet(appendarrayorNone([fragAS,fragBS]),appendarrayorNone([holeS,electronS]))
     results.addFragmentsTriplet(appendarrayorNone([fragAT,fragBT]),appendarrayorNone([holeT,electronT]))
+    results.auxsize=auxsize
+    results.basissize=basissize
     return results
 
 
