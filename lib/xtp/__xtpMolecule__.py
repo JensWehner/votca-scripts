@@ -140,7 +140,7 @@ class molecule:
     R=np.cos(angle)*np.identity(3)+np.sin(angle)*crossproduktmatrix+(1-np.cos(angle))*np.outer(norm,norm)
     #print R 
     self.calccoG()
-    if r==None:
+    if r is None:
       save=self.coG
       self.shift(-save)
       for i in self.atomlist:
@@ -215,16 +215,22 @@ class molecule:
     r=np.zeros(3)
     element=None
     bohr2A=0.52917721092
+    ptensor=np.zeros((3,3))
     with open(filename,"r") as f:
       for line in f.readlines():
+        print(line)
         a=line.split()
-        ptensor=np.zeros((3,3))
         if "Units angstrom" in line:
           conversion=1
         elif "Units bohr" in line:
           conversion=0.52917721092
         elif "Rank" in line:
-          #print line
+          if line1 and line2: 
+            at=atom(element,r)
+            at.setmultipoles(q,d*bohr2A,quad*bohr2A**2,ptensor)
+            self.updateatom(at)
+            line1=False
+            line2=False
           element=a[0]
           rank=int(a[5])
           if conversion!=False:
@@ -234,22 +240,24 @@ class molecule:
           q=float(a[0])
           line2=True
         elif len(a)==3 and line1 and line2 and rank>=1:
-          d=np.array(a[0:3],dtype=float) 
+          d=np.array(a[0:3],dtype=float)
+             
         elif len(a)==5 and line1 and line2 and "P" not in line and rank==2:
           quad=np.array(a[0:],dtype=float) 
         elif "P" in line and line1 and line2:
             p=np.array(a[1:],dtype=float)
-            if len(a[1:])==3:
+            if len(p)==1:
+                ptensor=np.array([[p[0],0,0],[0,p[0],0],[0,0,p[0]]])
+            elif len(p)==3:
                 ptensor=np.array([[p[0],0,0],[0,p[1],0],[0,0,p[2]]])
-            elif len(a[1:])==6:
+            elif len(p)==6:
                 ptensor=np.array([[p[0],p[1],p[2]],[p[1],p[3],p[4]],[p[2],p[4],p[5]]])
-        elif line1 and line2: 
-          line1=False
-          line2=False
-          at=atom(element,r)
-          at.setmultipoles(q,d*bohr2A,quad*bohr2A**2,ptensor)
-          self.updateatom(at)
-    
+
+    if line1 and line2: 
+      at=atom(element,r)
+      at.setmultipoles(q,d*bohr2A,quad*bohr2A**2,ptensor)
+      self.updateatom(at)
+        
     self.calccoG()
-    
+    print("Read in file {} with {:d} atoms".format(filename,len(self.atomlist)))
     return
