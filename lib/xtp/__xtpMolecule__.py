@@ -218,7 +218,6 @@ class molecule:
     ptensor=np.zeros((3,3))
     with open(filename,"r") as f:
       for line in f.readlines():
-        print(line)
         a=line.split()
         if "Units angstrom" in line:
           conversion=1
