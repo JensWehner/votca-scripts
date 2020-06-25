@@ -30,7 +30,8 @@ with open (inputfile,"r") as f:
             zz=float(polarstring[40:58])
             polartensor=np.array([[xx,xy,xz],[xy,yy,yz],[xz,yz,zz]])
                         
-    
+            print("hello")
+ 
 if check==False:
         print "There is no polarisability in file. Leaving"
         sys.exit()
